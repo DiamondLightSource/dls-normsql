@@ -5,7 +5,7 @@ import shutil
 import pytest
 
 # Formatting of testing log messages.
-from dls_logformatter.dls_logformatter import DlsLogformatteratter
+from dls_logformatter.dls_logformatter import DlsLogformatter
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ def constants(request):
 def logging_setup():
     # print("")
 
-    formatter = DlsLogformatteratter(type="long")
+    formatter = DlsLogformatter(type="long")
     logger = logging.StreamHandler()
     logger.setFormatter(formatter)
     logging.getLogger().addHandler(logger)
