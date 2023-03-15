@@ -23,6 +23,7 @@ from dls_normsql.table_definition import TableDefinition
 
 logger = logging.getLogger(__name__)
 
+connect_lock = asyncio.Lock()
 
 # ----------------------------------------------------------------------------------------
 def sqlite_regexp_callback(pattern, input):
@@ -71,76 +72,79 @@ class Aiosqlite:
         Connect to database at filename given in constructor.
         """
 
-        should_create_schemas = False
+        async with connect_lock:
+            should_create_schemas = False
 
-        # File doesn't exist yet?
-        if not os.path.isfile(self.__filename):
-            # Create directory for the file.
-            await self.__create_directory(self.__filename)
-            # After connection, we must create the schemas.
-            should_create_schemas = True
+            # File doesn't exist yet?
+            if not os.path.isfile(self.__filename):
+                # Create directory for the file.
+                await self.__create_directory(self.__filename)
+                # After connection, we must create the schemas.
+                should_create_schemas = True
 
-        logger.debug(f"connecting to {self.__filename}")
+            logger.debug(f"connecting to {self.__filename}")
 
-        self.__connection = await aiosqlite.connect(self.__filename)
-        self.__connection.row_factory = aiosqlite.Row
+            self.__connection = await aiosqlite.connect(self.__filename)
+            self.__connection.row_factory = aiosqlite.Row
 
-        # rows = await self.query("PRAGMA journal_mode", why="query journal mode")
-        # logger.debug(f"journal mode rows {json.dumps(rows)}")
+            # rows = await self.query("PRAGMA journal_mode", why="query journal mode")
+            # logger.debug(f"journal mode rows {json.dumps(rows)}")
 
-        # rows = await self.query("PRAGMA journal_mode=OFF", why="turn OFF journal mode")
-        # logger.debug(f"journal mode OFF rows {json.dumps(rows)}")
+            # rows = await self.query("PRAGMA journal_mode=OFF", why="turn OFF journal mode")
+            # logger.debug(f"journal mode OFF rows {json.dumps(rows)}")
 
-        # rows = await self.query("PRAGMA journal_mode", why="query journal mode")
-        # logger.debug(f"journal mode rows {json.dumps(rows)}")
+            # rows = await self.query("PRAGMA journal_mode", why="query journal mode")
+            # logger.debug(f"journal mode rows {json.dumps(rows)}")
 
-        # rows = await self.query("SELECT * from mainTable", why="main table check")
+            # rows = await self.query("SELECT * from mainTable", why="main table check")
 
-        await self.__connection.create_function("regexp", 2, sqlite_regexp_callback)
-        logger.debug("created regexp function")
+            await self.__connection.create_function("regexp", 2, sqlite_regexp_callback)
+            logger.debug("created regexp function")
 
-        await self.add_table_definitions()
+            await self.add_table_definitions()
 
-        if should_create_schemas:
-            await self.create_schemas()
-            await self.insert(Tablenames.REVISION, [{"number": self.LATEST_REVISION}])
-            # TODO: Set permission on sqlite file from configuration.
-            os.chmod(self.__filename, 0o666)
-        else:
-            try:
-                records = await self.query(
-                    f"SELECT number FROM {Tablenames.REVISION}",
-                    why="get database revision",
+            if should_create_schemas:
+                await self.create_schemas()
+                await self.insert(
+                    Tablenames.REVISION, [{"number": self.LATEST_REVISION}]
                 )
-                if len(records) == 0:
+                # TODO: Set permission on sqlite file from configuration.
+                os.chmod(self.__filename, 0o666)
+            else:
+                try:
+                    records = await self.query(
+                        f"SELECT number FROM {Tablenames.REVISION}",
+                        why="get database revision",
+                    )
+                    if len(records) == 0:
+                        old_revision = 0
+                    else:
+                        old_revision = records[0]["number"]
+                except Exception as exception:
+                    logger.warning(
+                        f"could not get revision, presuming legacy database with no table: {exception}"
+                    )
                     old_revision = 0
-                else:
-                    old_revision = records[0]["number"]
-            except Exception as exception:
-                logger.warning(
-                    f"could not get revision, presuming legacy database with no table: {exception}"
-                )
-                old_revision = 0
 
-            if old_revision < self.LATEST_REVISION:
-                logger.debug(
-                    f"need to update old revision {old_revision}"
-                    f" to latest revision {self.LATEST_REVISION}"
-                )
-                for revision in range(old_revision, self.LATEST_REVISION):
-                    logger.debug(f"updating to revision {revision+1}")
-                    await self.apply_revision(revision + 1)
-                await self.update(
-                    Tablenames.REVISION,
-                    {"number": self.LATEST_REVISION},
-                    "1 = 1",
-                    why="update database revision",
-                )
+                if old_revision < self.LATEST_REVISION:
+                    logger.debug(
+                        f"need to update old revision {old_revision}"
+                        f" to latest revision {self.LATEST_REVISION}"
+                    )
+                    for revision in range(old_revision, self.LATEST_REVISION):
+                        logger.debug(f"updating to revision {revision+1}")
+                        await self.apply_revision(revision + 1)
+                    await self.update(
+                        Tablenames.REVISION,
+                        {"number": self.LATEST_REVISION},
+                        "1 = 1",
+                        why="update database revision",
+                    )
 
-        # Emit the name of the database file for positive confirmation on console.
-        logger.info(
-            f"{callsign(self)} database file is {self.__filename} revision {self.LATEST_REVISION}"
-        )
+            # Emit the name of the database file for positive confirmation on console.
+            logger.info(
+                f"{callsign(self)} database file is {self.__filename} revision {self.LATEST_REVISION}"
+            )
 
     # ----------------------------------------------------------------------------------------
     async def apply_revision(self, revision):
@@ -233,9 +237,11 @@ class Aiosqlite:
                     % (table.name, field_name, table.name, field_name)
                 )
 
-        await self.__connection.execute(
-            "CREATE TABLE %s(%s)" % (table.name, ", ".join(fields_sql))
-        )
+        sql = "CREATE TABLE %s\n(%s)" % (table.name, ",\n  ".join(fields_sql))
+
+        logger.info("\n%s\n%s" % (sql, "\n".join(indices_sql)))
+
+        await self.__connection.execute(sql)
 
         for sql in indices_sql:
             await self.__connection.execute(sql)
@@ -250,7 +256,7 @@ class Aiosqlite:
         rows,
         why=None,
         should_commit: Optional[bool] = True,
-    ):
+    ) -> None:
         """
         Insert one or more rows.
         Each row is a dictionary.
@@ -270,6 +276,7 @@ class Aiosqlite:
 
         values_rows = []
 
+        logger.info(f"inserting {table.name} fields {list(table.fields.keys())}")
         insertable_fields = []
         for field in table.fields:
             # The first row is expected to define the keys for all rows inserted.
@@ -283,10 +290,13 @@ class Aiosqlite:
         for row in rows:
             values_row = []
             for field in table.fields:
-                if field in row:
+                if field == CommonFieldnames.CREATED_ON:
+                    created_on = row.get(field)
+                    if created_on is None:
+                        created_on = now
+                    values_row.append(created_on)
+                elif field in row:
                     values_row.append(row[field])
-                elif field == CommonFieldnames.CREATED_ON:
-                    values_row.append(row.get(field, now))
             values_rows.append(values_row)
 
         sql = "INSERT INTO %s (%s) VALUES (%s)" % (
