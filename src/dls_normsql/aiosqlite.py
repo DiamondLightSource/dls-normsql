@@ -299,7 +299,7 @@ class Aiosqlite:
                     values_row.append(row[field])
             values_rows.append(values_row)
 
-        sql = "INSERT INTO %s (%s) VALUES (%s)" % (
+        sql = "INSERT INTO %s\n  (%s)\n  VALUES (%s)" % (
             table.name,
             ", ".join(insertable_fields),
             ", ".join(qmarks),
@@ -309,9 +309,9 @@ class Aiosqlite:
             await self.__connection.executemany(sql, values_rows)
 
             if why is None:
-                logger.debug("%s %s" % (sql, values_rows))
+                logger.debug("\n%s\n%s" % (sql, values_rows))
             else:
-                logger.debug("%s: %s %s" % (why, sql, values_rows))
+                logger.debug("%s:\n%s\n%s" % (why, sql, values_rows))
 
             if should_commit:
                 await self.__connection.commit()
