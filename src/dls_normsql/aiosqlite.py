@@ -354,9 +354,9 @@ class Aiosqlite:
         if len(values_row) == 0:
             raise RuntimeError("no fields in record match database table")
 
-        sql = "UPDATE %s SET %s WHERE %s" % (
+        sql = "UPDATE %s SET\n  %s\nWHERE %s" % (
             table.name,
-            ", ".join(qmarks),
+            ",\n  ".join(qmarks),
             where,
         )
 
@@ -371,10 +371,12 @@ class Aiosqlite:
                 await self.__connection.commit()
 
             if why is None:
-                logger.debug("%d rows from %s\nvalues %s" % (rowcount, sql, values_row))
+                logger.debug(
+                    "%d rows from:\n%s\nvalues %s" % (rowcount, sql, values_row)
+                )
             else:
                 logger.debug(
-                    "%d rows from %s: %s\nvalues %s" % (rowcount, why, sql, values_row)
+                    "%d rows from %s:\n%s\nvalues %s" % (rowcount, why, sql, values_row)
                 )
 
         except aiosqlite.OperationalError:
