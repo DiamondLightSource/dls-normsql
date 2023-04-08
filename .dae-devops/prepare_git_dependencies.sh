@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # ********** Please don't edit this file!
-# ********** It has been generated automatically by dae_devops version 0.4.0.
+# ********** It has been generated automatically by dae_devops version 0.5.2.
 # ********** For repository_name dls-normsql
 
 me=${BASH_SOURCE}
@@ -13,4 +13,4 @@ function __install {
 }
 
 
-# dae_devops_fingerprint 93e61fd4bac57573417cfd42bb395e85
+# dae_devops_fingerprint d2a7e27cfad2e9f2547dc2b0da58fdd1

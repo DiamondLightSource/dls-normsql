@@ -1,5 +1,5 @@
 // ********** Please don't edit this file!
-// ********** It has been generated automatically by dae_devops version 0.4.0.
+// ********** It has been generated automatically by dae_devops version 0.5.2.
 // ********** For repository_name dls-normsql
 
 // For format details, see https://containers.dev/implementors/json_reference/
@@ -57,4 +57,4 @@
     "postCreateCommand": "pip install -e .[dev]"
 }
 
-// dae_devops_fingerprint 4fa020c7e129da97652ad6681386dfb4
+// dae_devops_fingerprint bf6676a0739eeb0e671f3518d7739877

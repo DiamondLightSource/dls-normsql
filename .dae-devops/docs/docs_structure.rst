@@ -1,5 +1,5 @@
 .. # ********** Please don't edit this file!
-.. # ********** It has been generated automatically by dae_devops version 0.4.0.
+.. # ********** It has been generated automatically by dae_devops version 0.5.2.
 .. # ********** For repository_name dls-normsql
 
 About the documentation
@@ -21,4 +21,4 @@ improve most documentation - often immensely.
 
 `More information on this topic. <https://documentation.divio.com>`_
 
-.. # dae_devops_fingerprint d70cbde1ea928b73721419cf1895f056
+.. # dae_devops_fingerprint 68095839584c6e3455c1bd06350312f4

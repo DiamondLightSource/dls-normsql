@@ -1,5 +1,5 @@
 # ********** Please don't edit this file!
-# ********** It has been generated automatically by dae_devops version 0.4.0.
+# ********** It has been generated automatically by dae_devops version 0.5.2.
 # ********** For repository_name dls-normsql
 
 name: Install requirements
@@ -61,4 +61,4 @@ runs:
       shell: bash
 
 
-# dae_devops_fingerprint 403b45c3d93196f440b361f82fd19d44
+# dae_devops_fingerprint 8d7ad9a9e4bbb3b504abc3a0f33579ee

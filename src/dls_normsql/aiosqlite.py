@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 connect_lock = asyncio.Lock()
 
+
 # ----------------------------------------------------------------------------------------
 def sqlite_regexp_callback(pattern, input):
     reg = re.compile(pattern)

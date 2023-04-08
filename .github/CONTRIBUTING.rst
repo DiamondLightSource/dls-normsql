@@ -1,5 +1,5 @@
 .. # ********** Please don't edit this file!
-.. # ********** It has been generated automatically by dae_devops version 0.4.0.
+.. # ********** It has been generated automatically by dae_devops version 0.5.2.
 .. # ********** For repository_name dls-normsql
 
 Contributing to the project
@@ -38,4 +38,4 @@ should follow.
 
 .. _Developer Guide: https://diamondlightsource.github.io/dls-normsql/main/developer/how-to/contribute.html
 
-.. # dae_devops_fingerprint 2e148c8136906d7b360a0a585c8b44b6
+.. # dae_devops_fingerprint e4fc983b36dd78a7c7fefcb6ac9fdd13

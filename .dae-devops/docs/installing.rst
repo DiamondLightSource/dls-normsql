@@ -1,16 +1,16 @@
 .. # ********** Please don't edit this file!
-.. # ********** It has been generated automatically by dae_devops version 0.4.0.
+.. # ********** It has been generated automatically by dae_devops version 0.5.2.
 .. # ********** For repository_name dls-normsql
 
 Installing
 =======================================================================
 
 
-You will need python 3.8 or later. 
+You will need python 3.9 or later. 
 
-On a Diamond Light Source internal computer, you can achieve Python 3.8 by::
+On a Diamond Light Source internal computer, you can achieve Python 3.9 by::
 
-    $ module load python/3.8
+    $ module load python/3.9
 
 You can check your version of python by typing into a terminal::
 
@@ -40,4 +40,4 @@ You can check the version that has been installed by typing::
     $ dls-normsql --version
     $ dls-normsql --version-json
 
-.. # dae_devops_fingerprint 99cdabc51a937f9f403b533ea3108c3f
+.. # dae_devops_fingerprint f0f3fa3bcf53a551add4ee39538eb44a

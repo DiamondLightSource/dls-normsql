@@ -1,5 +1,5 @@
 .. # ********** Please don't edit this file!
-.. # ********** It has been generated automatically by dae_devops version 0.4.0.
+.. # ********** It has been generated automatically by dae_devops version 0.5.2.
 .. # ********** For repository_name dls-normsql
 
 Devops
@@ -43,4 +43,4 @@ Publishing::
     
 
 
-.. # dae_devops_fingerprint 231c4947e546d9e98de707b418797c3b
+.. # dae_devops_fingerprint 35ea37a143cb4560425194afc2bad8ed

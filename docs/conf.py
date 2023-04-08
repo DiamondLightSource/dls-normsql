@@ -1,5 +1,5 @@
 # ********** Please don't edit this file!
-# ********** It has been generated automatically by dae_devops version 0.4.0.
+# ********** It has been generated automatically by dae_devops version 0.5.2.
 # ********** For repository_name dls-normsql
 
 from pathlib import Path
@@ -188,7 +188,7 @@ ultimate_replacements = {
     "$" + "{repository_name}": "dls-normsql",
     "$" + "{package_name}": "dls_normsql",
     "$" + "{git_url}": "https://gitlab.diamond.ac.uk/kbp43231",
-    "$" + "{python_version_at_least}": "3.8",
+    "$" + "{python_version_at_least}": "3.9",
 }
 
 
@@ -197,4 +197,4 @@ def setup(app):
     app.connect("source-read", ultimateReplace)
 
 
-# dae_devops_fingerprint d6b859985d0506995addfd52cefa3cf1
+# dae_devops_fingerprint 404e6b95750b57333b0799fcd1a2c408

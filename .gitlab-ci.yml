@@ -1,5 +1,5 @@
 # ********** Please don't edit this file!
-# ********** It has been generated automatically by dae_devops version 0.4.0.
+# ********** It has been generated automatically by dae_devops version 0.5.2.
 # ********** For repository_name dls-normsql
 
 variables:
@@ -87,4 +87,4 @@ package_pip:
 #     # The validate_docs artifacts are in the build/html folder.
 #     - make -f .dae-devops/Makefile publish_docs
 
-# dae_devops_fingerprint 4e9136dd730528488f4a163b52347f5e
+# dae_devops_fingerprint 19ac89e7287f70ae7f5f96292102fde8

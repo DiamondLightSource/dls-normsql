@@ -1,5 +1,5 @@
 .. # ********** Please don't edit this file!
-.. # ********** It has been generated automatically by dae_devops version 0.4.0.
+.. # ********** It has been generated automatically by dae_devops version 0.5.2.
 .. # ********** For repository_name dls-normsql
 
 Testing
@@ -35,4 +35,4 @@ This allows peeking in there to see what's been written by the test.
     
 
 
-.. # dae_devops_fingerprint 32ce52a513e208dea899cdb3a378290c
+.. # dae_devops_fingerprint 16abfa1d4f582c07e1ea9281771b8f4f
