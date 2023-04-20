@@ -240,7 +240,7 @@ class Aiosqlite:
 
         sql = "CREATE TABLE %s\n(%s)" % (table.name, ",\n  ".join(fields_sql))
 
-        logger.info("\n%s\n%s" % (sql, "\n".join(indices_sql)))
+        logger.debug("\n%s\n%s" % (sql, "\n".join(indices_sql)))
 
         await self.__connection.execute(sql)
 
@@ -277,7 +277,6 @@ class Aiosqlite:
 
         values_rows = []
 
-        logger.info(f"inserting {table.name} fields {list(table.fields.keys())}")
         insertable_fields = []
         for field in table.fields:
             # The first row is expected to define the keys for all rows inserted.
