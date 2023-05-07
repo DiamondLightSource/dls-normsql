@@ -24,6 +24,7 @@ from dls_normsql.table_definition import TableDefinition
 logger = logging.getLogger(__name__)
 
 connect_lock = asyncio.Lock()
+apply_revisions_lock = asyncio.Lock()
 
 
 # ----------------------------------------------------------------------------------------
@@ -60,7 +61,10 @@ class Aiosqlite:
 
         self.__tables = {}
 
-        self.LATEST_REVISION = 1
+        # Deriving class has not established its latest revision?
+        if not hasattr(self, "LATEST_REVISION") or self.LATEST_REVISION is None:
+            # Presume it is 1.
+            self.LATEST_REVISION = 1
 
         self.__backup_restore_lock = asyncio.Lock()
 
@@ -100,8 +104,8 @@ class Aiosqlite:
             # rows = await self.query("SELECT * from mainTable", why="main table check")
 
             await self.__connection.create_function("regexp", 2, sqlite_regexp_callback)
-            logger.debug("created regexp function")
 
+            # Let the base class contribute its table definitions to the in-memory list.
             await self.add_table_definitions()
 
             if should_create_schemas:
@@ -111,41 +115,58 @@ class Aiosqlite:
                 )
                 # TODO: Set permission on sqlite file from configuration.
                 os.chmod(self.__filename, 0o666)
-            else:
-                try:
-                    records = await self.query(
-                        f"SELECT number FROM {Tablenames.REVISION}",
-                        why="get database revision",
-                    )
-                    if len(records) == 0:
-                        old_revision = 0
-                    else:
-                        old_revision = records[0]["number"]
-                except Exception as exception:
-                    logger.warning(
-                        f"could not get revision, presuming legacy database with no table: {exception}"
-                    )
-                    old_revision = 0
-
-                if old_revision < self.LATEST_REVISION:
-                    logger.debug(
-                        f"need to update old revision {old_revision}"
-                        f" to latest revision {self.LATEST_REVISION}"
-                    )
-                    for revision in range(old_revision, self.LATEST_REVISION):
-                        logger.debug(f"updating to revision {revision+1}")
-                        await self.apply_revision(revision + 1)
-                    await self.update(
-                        Tablenames.REVISION,
-                        {"number": self.LATEST_REVISION},
-                        "1 = 1",
-                        why="update database revision",
-                    )
 
             # Emit the name of the database file for positive confirmation on console.
             logger.info(
                 f"{callsign(self)} database file is {self.__filename} revision {self.LATEST_REVISION}"
             )
+
+    # ----------------------------------------------------------------------------------------
+    async def apply_revisions(self):
+        """
+        Apply revision updates to databse if needed.
+        """
+
+        # TODO: Consider how to lock database while running applying_revisions.
+        # TODO: Establish transaction arouund apply_revisions with rollback if error.
+        async with apply_revisions_lock:
+            try:
+                records = await self.query(
+                    f"SELECT number FROM {Tablenames.REVISION}",
+                    why="get database revision",
+                )
+                if len(records) == 0:
+                    old_revision = 0
+                else:
+                    old_revision = records[0]["number"]
+            except Exception as exception:
+                logger.warning(
+                    f"could not get revision, presuming legacy database with no table: {exception}"
+                )
+                old_revision = 0
+
+            if old_revision < self.LATEST_REVISION:
+                # Backup before applying revisions.
+                logger.debug(
+                    f"[BKREVL] backing up before updating to revision {self.LATEST_REVISION}"
+                )
+
+                await self.backup()
+
+                for revision in range(old_revision, self.LATEST_REVISION):
+                    logger.debug(f"updating to revision {revision+1}")
+                    await self.apply_revision(revision + 1)
+                await self.update(
+                    Tablenames.REVISION,
+                    {"number": self.LATEST_REVISION},
+                    "1 = 1",
+                    why="update database revision",
+                )
+            else:
+                logger.debug(
+                    f"[BKREVL] no need to update old revision {old_revision}"
+                    f" which matches latest revision {self.LATEST_REVISION}"
+                )
 
     # ----------------------------------------------------------------------------------------
     async def apply_revision(self, revision):
@@ -469,25 +490,26 @@ class Aiosqlite:
         Back up database to timestamped location.
         """
 
-        # Prune all the restores which were orphaned.
-        directory = self.__backup_directory
-
-        basename, suffix = os.path.splitext(os.path.basename(self.__filename))
-
-        filenames = glob.glob(f"{directory}/{basename}.*{suffix}")
-
-        filenames.sort(reverse=True)
-
-        logger.debug(f"[BACKPRU] {self.__last_restore} is last restore")
-        for restore in range(self.__last_restore):
-            logger.debug(
-                f"[BACKPRU] removing {restore}-th restore {filenames[restore]}"
-            )
-            os.remove(filenames[restore])
-
-        self.__last_restore = 0
-
         async with self.__backup_restore_lock:
+            # Prune all the restores which were orphaned.
+            directory = self.__backup_directory
+            if directory is None:
+                raise RuntimeError("no backup directory supplied in confirmation")
+
+            basename, suffix = os.path.splitext(os.path.basename(self.__filename))
+
+            filenames = glob.glob(f"{directory}/{basename}.*{suffix}")
+
+            filenames.sort(reverse=True)
+
+            for restore in range(self.__last_restore):
+                logger.debug(
+                    f"[BACKPRU] removing {restore}-th restore {filenames[restore]}"
+                )
+                os.remove(filenames[restore])
+
+            self.__last_restore = 0
+
             timestamp = isodatetime_filename()
             to_filename = f"{directory}/{basename}.{timestamp}{suffix}"
 
@@ -509,6 +531,8 @@ class Aiosqlite:
 
         async with self.__backup_restore_lock:
             directory = self.__backup_directory
+            if directory is None:
+                raise RuntimeError("no backup directory supplied in confirmation")
 
             basename, suffix = os.path.splitext(os.path.basename(self.__filename))
 
