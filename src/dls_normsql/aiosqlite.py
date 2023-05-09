@@ -118,7 +118,7 @@ class Aiosqlite:
 
             # Emit the name of the database file for positive confirmation on console.
             logger.info(
-                f"{callsign(self)} database file is {self.__filename} revision {self.LATEST_REVISION}"
+                f"{callsign(self)} database file is {self.__filename} code revision {self.LATEST_REVISION}"
             )
 
     # ----------------------------------------------------------------------------------------
@@ -148,7 +148,7 @@ class Aiosqlite:
             if old_revision < self.LATEST_REVISION:
                 # Backup before applying revisions.
                 logger.debug(
-                    f"[BKREVL] backing up before updating to revision {self.LATEST_REVISION}"
+                    f"[BKREVL] backing up before updating from revision {old_revision} to revision {self.LATEST_REVISION}"
                 )
 
                 await self.backup()
@@ -164,8 +164,8 @@ class Aiosqlite:
                 )
             else:
                 logger.debug(
-                    f"[BKREVL] no need to update old revision {old_revision}"
-                    f" which matches latest revision {self.LATEST_REVISION}"
+                    f"[BKREVL] no need to update persistent revision {old_revision}"
+                    f" which matches code revision {self.LATEST_REVISION}"
                 )
 
     # ----------------------------------------------------------------------------------------
