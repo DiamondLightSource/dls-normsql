@@ -182,7 +182,7 @@ class Aiosqlite:
     async def disconnect(self):
 
         if self.__connection is not None:
-            logger.debug(f"{callsign(self)} disconnecting")
+            logger.debug(f"[DISSHU] {callsign(self)} disconnecting")
             await self.__connection.close()
             self.__connection = None
 
