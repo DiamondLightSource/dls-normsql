@@ -42,6 +42,9 @@ class Aiomysql:
 
         t = require(s, specification, "type_specific_tbd")
 
+        # We might use values in type_specific_tbd during the connection method.
+        self.__type_specific_tbd = t
+
         self.__host = require(s, t, "host")
 
         self.__port = require(s, t, "port")
@@ -94,10 +97,15 @@ class Aiomysql:
                 password=self.__password,
             )
 
-            # Set the transaction isolation level so that commits on one connection are available to other connections quickly.
-            # The default was REPEATABLE READ, which is stricter, but I found I could not get committed data immediately.
-            # TODO: Consider implications of setting aiomysql to TRANSACTION ISOLATION LEVEL READ COMMITTED.
-            await self.execute("SET GLOBAL TRANSACTION ISOLATION LEVEL READ COMMITTED")
+            # Allow the possibility to set the transaction isolation level so that commits on one connection are available to other connections quickly.
+            # The default was REPEATABLE READ, which is stricter, but I found I could not get committed data immediately at a second connection.
+            # TODO: Consider implications of setting aiomysql to the more relaxed TRANSACTION ISOLATION LEVEL READ COMMITTED.
+            isolation_level = self.__type_specific_tbd.get(
+                "isolation_level", "READ COMMITTED"
+            )
+            await self.execute(
+                f"SET GLOBAL TRANSACTION ISOLATION LEVEL {isolation_level}"
+            )
 
             try:
                 await self.execute(f"USE {self.__database_name}")
@@ -113,16 +121,6 @@ class Aiomysql:
                 await self.execute(f"CREATE DATABASE {self.__database_name}")
                 await self.execute(f"USE {self.__database_name}")
                 should_create_schemas = True
-
-            # Commit the statement to apply the isolation level
-            await self.__connection.commit()
-
-            # Execute the SQL query to get the isolation level
-            records = await self.query("SELECT @@session.transaction_isolation")
-
-            # Fetch the result
-            isolation_level = records[0]
-            logger.debug(f"isolation_level is {isolation_level}")
 
             # Let the base class contribute its table definitions to the in-memory list.
             await self.add_table_definitions()

@@ -48,6 +48,9 @@ class Aiosqlite:
             f"{callsign(self)} specification", specification, "filename"
         )
 
+        # Default is an empty type_specific_tbd.
+        self.__type_specific_tbd = specification.get("type_specific_tbd", {})
+
         # Backup directory default is the path where the filename is.
         self.__backup_directory = specification.get(
             "backup_directory", os.path.dirname(self.__filename)
@@ -92,10 +95,16 @@ class Aiosqlite:
             self.__connection = await aiosqlite.connect(self.__filename)
             self.__connection.row_factory = aiosqlite.Row
 
-            # Set isolation level such that all statements not in an explicit transaction are autocommitted immediately and visible on other connections.
+            # Set isolation level such that all statements which are not already in an explicit transaction
+            # are autocommitted immediately and visible on other connections.
+            # This might be less efficient?  But it's nice when monitoring a sqlite file with a management tool.
             # TODO: Consider the ramifications of setting aiosqlite isolation_level to None.
-            self.__connection.isolation_level = None
-            logger.debug(f"isolation_level is {self.__connection.isolation_level}")
+            # Possible values are None, '' (default), DEFERRED, and EXCLUSIVE.
+            isolation_level = self.__type_specific_tbd.get("isolation_level", None)
+            self.__connection.isolation_level = isolation_level
+            logger.debug(
+                f"isolation_level is now set to '{self.__connection.isolation_level}'"
+            )
 
             # rows = await self.query("PRAGMA journal_mode", why="query journal mode")
             # logger.debug(f"journal mode rows {json.dumps(rows)}")
