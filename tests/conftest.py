@@ -34,12 +34,7 @@ def logging_setup():
 
     # Turn off noisy debug.
     logging.getLogger("asyncio").setLevel("WARNING")
-    logging.getLogger("pika").setLevel("WARNING")
-    logging.getLogger("stomp").setLevel("WARNING")
-    logging.getLogger("luigi-interface").setLevel("WARNING")
-    logging.getLogger("luigi.bx_scheduler").setLevel("INFO")
     logging.getLogger("urllib3.connectionpool").setLevel("INFO")
-
     logging.getLogger("dls_utilpack.things").setLevel("INFO")
 
     # Cover the version.

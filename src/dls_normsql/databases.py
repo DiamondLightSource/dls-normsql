@@ -43,4 +43,9 @@ class Databases:
 
             return Aiosqlite
 
+        if class_type == ClassTypes.AIOMYSQL:
+            from dls_normsql.aiomysql import Aiomysql
+
+            return Aiomysql
+
         raise NotFound("unable to get database class for type %s" % (class_type))

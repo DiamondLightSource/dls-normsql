@@ -1,5 +1,5 @@
 .. # ********** Please don't edit this file!
-.. # ********** It has been generated automatically by dae_devops version 0.5.2.
+.. # ********** It has been generated automatically by dae_devops version 0.5.3.dev1+g36e9e1c.d20230523.
 .. # ********** For repository_name dls-normsql
 
 Naming conventions
@@ -31,4 +31,4 @@ repository
     lowercase, hyphens
 
 
-.. # dae_devops_fingerprint 81e582297295ea8d1145aeb4fb60ffef
+.. # dae_devops_fingerprint d57378dce1a17dd03d4629d169efd5ca

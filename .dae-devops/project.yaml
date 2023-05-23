@@ -13,5 +13,6 @@ primary:
   dependencies:
     - type: pypi
       list:
-        - aiosqlite
         - dls-utilpack
+        - aiosqlite
+        - aiomysql

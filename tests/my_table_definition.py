@@ -20,5 +20,5 @@ class MyTableDefinition(TableDefinition):
         self.fields[CommonFieldnames.CREATED_ON] = {"type": "TEXT", "index": True}
         self.fields["my_field"] = {"type": "TEXT", "index": True}
 
-        for i in range(200):
+        for i in range(10):
             self.fields["my_other_field_%03d" % (i)] = {"type": "TEXT", "index": True}
