@@ -112,7 +112,7 @@ class Aiomysql:
             try:
                 await self.execute(f"USE {self.__database_name}")
                 database_exists = True
-            except aiomysql.OperationalError:
+            except RuntimeError:
                 database_exists = False
 
             if database_exists and should_drop_database:
