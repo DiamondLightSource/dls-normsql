@@ -109,6 +109,7 @@ class Aiomysql:
                 f"SET GLOBAL TRANSACTION ISOLATION LEVEL {isolation_level}"
             )
 
+            logger.debug(f"autocommit is {self.__connection.get_autocommit()}")
             try:
                 await self.execute(f"USE {self.__database_name}")
                 database_exists = True
@@ -199,7 +200,11 @@ class Aiomysql:
     async def disconnect(self):
 
         if self.__connection is not None:
-            logger.debug(f"[DISSHU] {callsign(self)} disconnecting")
+            # Commit final transaction if not currently autocommitting.
+            if not self.__connection.get_autocommit():
+                logger.debug(f"[DISSHU] {callsign(self)} committing final transaction")
+                await self.__connection.commit()
+            logger.debug(f"[DISSHU] {callsign(self)} closing connection to server")
             self.__connection.close()
             self.__connection = None
 
@@ -273,11 +278,11 @@ class Aiomysql:
         if isinstance(table, str):
             table = require("table definitions", self.__tables, table)
 
-        async with self.__connection.cursor() as cursor:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            await self.execute("DROP TABLE IF EXISTS %s" % (table.name))
 
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                await cursor.execute("DROP TABLE IF EXISTS %s" % (table.name))
+        async with self.__connection.cursor() as cursor:
 
             fields_sql = []
             indices_sql = []
@@ -371,7 +376,6 @@ class Aiomysql:
         try:
             async with self.__connection.cursor() as cursor:
                 await cursor.executemany(sql, values_rows)
-
                 logger.debug(message)
 
         except (TypeError, aiomysql.OperationalError) as exception:
