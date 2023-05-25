@@ -40,7 +40,7 @@ class Aiosqlite:
     """
 
     # ----------------------------------------------------------------------------------------
-    def __init__(self, specification):
+    def __init__(self, specification, database_definition_object):
         """
         Construct object.  Do not connect to database.
         """
@@ -61,6 +61,8 @@ class Aiosqlite:
         logging.getLogger("aiosqlite").setLevel(level)
 
         self.__connection = None
+
+        self.__database_definition_object = database_definition_object
 
         self.__tables = {}
 
@@ -192,6 +194,9 @@ class Aiosqlite:
             await self.create_table(Tablenames.REVISION)
             await self.insert(Tablenames.REVISION, [{"revision": revision}])
 
+        # Let the database definition object do its thing.
+        self.__database_definition_object.apply_revisions(self)
+
     # ----------------------------------------------------------------------------------------
     async def disconnect(self):
 
@@ -221,6 +226,9 @@ class Aiosqlite:
     async def add_table_definitions(self):
 
         self.add_table_definition(RevisionTableDefinition(self))
+
+        # Let the database definition object do its thing.
+        await self.__database_definition_object.add_table_definitions(self)
 
     # ----------------------------------------------------------------------------------------
     async def begin(self):

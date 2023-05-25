@@ -33,10 +33,11 @@ class Aiomysql:
     """
 
     # ----------------------------------------------------------------------------------------
-    def __init__(self, specification):
+    def __init__(self, specification, database_definition_object):
         """
         Construct object.  Do not connect to database.
         """
+        self.__database_definition_object = database_definition_object
 
         s = f"{callsign(self)} specification"
 
@@ -222,6 +223,9 @@ class Aiomysql:
     async def add_table_definitions(self):
 
         self.add_table_definition(RevisionTableDefinition(self))
+
+        # Let the database definition object do its thing.
+        await self.__database_definition_object.add_table_definitions(self)
 
     # ----------------------------------------------------------------------------------------
     async def begin(self):

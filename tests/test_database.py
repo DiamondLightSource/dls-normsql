@@ -3,7 +3,9 @@ import logging
 from dls_normsql.constants import ClassTypes, CommonFieldnames
 from dls_normsql.databases import Databases
 from tests.base_tester import BaseTester
-from tests.my_table_definition import MyTableDefinition
+
+# from tests.my_table_definition import MyTableDefinition
+from tests.my_database_definition import MyDatabaseDefinition
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +42,7 @@ class TestDatabaseAiomysql:
             "type": ClassTypes.AIOMYSQL,
             "type_specific_tbd": {
                 "database_name": "dls_normsql_pytest",
-                "host": "xchem-mysql",
+                "host": "docker-mysql",
                 "port": 3306,
                 "username": "root",
                 "password": "root",
@@ -63,11 +65,14 @@ class DatabaseTester(BaseTester):
     async def _main_coroutine(self, database_specification, output_directory):
         """ """
 
+        database_definition_object = MyDatabaseDefinition()
         databases = Databases()
-        database1 = databases.build_object(database_specification)
-        database2 = databases.build_object(database_specification)
-
-        database1.add_table_definition(MyTableDefinition())
+        database1 = databases.build_object(
+            database_specification, database_definition_object
+        )
+        database2 = databases.build_object(
+            database_specification, database_definition_object
+        )
 
         try:
             # Connect to database.
