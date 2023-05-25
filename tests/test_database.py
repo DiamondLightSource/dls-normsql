@@ -3,8 +3,6 @@ import logging
 from dls_normsql.constants import ClassTypes, CommonFieldnames
 from dls_normsql.databases import Databases
 from tests.base_tester import BaseTester
-
-# from tests.my_table_definition import MyTableDefinition
 from tests.my_database_definition import MyDatabaseDefinition
 
 logger = logging.getLogger(__name__)

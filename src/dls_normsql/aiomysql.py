@@ -8,7 +8,7 @@ import shutil
 import warnings
 from collections import OrderedDict
 from datetime import datetime
-from typing import Any, List, Optional
+from typing import Any, List
 
 import aiomysql
 
@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 connect_lock = asyncio.Lock()
 apply_revisions_lock = asyncio.Lock()
+
 
 # ----------------------------------------------------------------------------------------
 class Aiomysql:
@@ -89,7 +90,7 @@ class Aiomysql:
         async with connect_lock:
             should_create_schemas = False
 
-            logger.debug(f"connecting to mysql")
+            logger.debug(f"connecting to mysql {self.__host}:{self.__port}")
 
             self.__connection = await aiomysql.connect(
                 host=self.__host,
@@ -362,20 +363,19 @@ class Aiomysql:
 
         sql = self.__parameterize(sql, values_rows)
 
+        if why is None:
+            message = "\n%s\n%s" % (sql, values_rows)
+        else:
+            message = "%s:\n%s\n%s" % (why, sql, values_rows)
+
         try:
             async with self.__connection.cursor() as cursor:
                 await cursor.executemany(sql, values_rows)
 
-                if why is None:
-                    logger.debug("\n%s\n%s" % (sql, values_rows))
-                else:
-                    logger.debug("%s:\n%s\n%s" % (why, sql, values_rows))
+                logger.debug(message)
 
-        except (TypeError, aiomysql.OperationalError) as e:
-            if why is None:
-                raise RuntimeError(f"failed to execute {sql}")
-            else:
-                raise RuntimeError(f"failed to execute {why}: {sql}")
+        except (TypeError, aiomysql.OperationalError) as exception:
+            raise RuntimeError(f"{exception} doing {message}")
 
     # ----------------------------------------------------------------------------------------
     async def update(

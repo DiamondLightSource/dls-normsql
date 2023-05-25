@@ -33,7 +33,7 @@ class AiomysqlTester(BaseTester):
     async def _main_coroutine(self, database_specification, output_directory):
         """ """
         pool = await aiomysql.create_pool(
-            host="xchem-mysql",
+            host="docker-mysql",
             port=3306,
             user="root",
             password="root",
