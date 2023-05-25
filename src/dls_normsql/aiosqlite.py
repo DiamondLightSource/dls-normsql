@@ -282,14 +282,14 @@ class Aiosqlite:
 
         for field_name in table.fields:
             field = table.fields[field_name]
-            fields_sql.append("%s %s" % (field_name, field["type"]))
+            fields_sql.append("`%s` %s" % (field_name, field["type"]))
             if field.get("index"):
                 indices_sql.append(
-                    "CREATE INDEX %s_%s ON %s(%s)"
+                    "CREATE INDEX `%s_%s` ON `%s`(`%s`)"
                     % (table.name, field_name, table.name, field_name)
                 )
 
-        sql = "CREATE TABLE %s\n(%s)" % (table.name, ",\n  ".join(fields_sql))
+        sql = "CREATE TABLE `%s`\n(%s)" % (table.name, ",\n  ".join(fields_sql))
 
         logger.debug("\n%s\n%s" % (sql, "\n".join(indices_sql)))
 

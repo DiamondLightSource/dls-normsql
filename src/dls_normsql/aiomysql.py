@@ -292,18 +292,18 @@ class Aiomysql:
                 field_type = field["type"].upper()
                 if field_type == "TEXT PRIMARY KEY":
                     field_type = "VARCHAR(64) PRIMARY KEY"
-                fields_sql.append("%s %s" % (field_name, field_type))
+                fields_sql.append("`%s` %s" % (field_name, field_type))
                 if field.get("index", False):
                     if field_type == "TEXT":
                         index_length = "(128)"
                     else:
                         index_length = ""
                     indices_sql.append(
-                        "CREATE INDEX %s_%s ON %s(%s%s)"
+                        "CREATE INDEX `%s_%s` ON `%s`(`%s`%s)"
                         % (table.name, field_name, table.name, field_name, index_length)
                     )
 
-            sql = "CREATE TABLE %s\n(%s)" % (table.name, ",\n  ".join(fields_sql))
+            sql = "CREATE TABLE `%s`\n(%s)" % (table.name, ",\n  ".join(fields_sql))
 
             logger.debug("\n%s\n%s" % (sql, "\n".join(indices_sql)))
 
