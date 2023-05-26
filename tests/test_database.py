@@ -1,5 +1,7 @@
 import logging
 
+from dls_utilpack.envvar import Envvar
+
 from dls_normsql.constants import ClassTypes, CommonFieldnames
 from dls_normsql.databases import Databases
 from tests.base_tester import BaseTester
@@ -35,13 +37,18 @@ class TestDatabaseAiomysql:
         Tests the mysql implementation of Database.
         """
 
+        host = Envvar("MYSQL_HOST")
+        assert host.is_set
+        port = Envvar("MYSQL_PORT", default=3306)
+        assert port.is_set
+
         # Database specification.
         database_specification = {
             "type": ClassTypes.AIOMYSQL,
             "type_specific_tbd": {
                 "database_name": "dls_normsql_pytest",
-                "host": "docker-mysql",
-                "port": 3306,
+                "host": "$MYSQL_HOST",
+                "port": "$MYSQL_PORT",
                 "username": "root",
                 "password": "root",
             },

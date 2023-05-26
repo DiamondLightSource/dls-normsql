@@ -1,6 +1,7 @@
 import logging
 
 import aiomysql
+from dls_utilpack.envvar import Envvar
 
 from tests.base_tester import BaseTester
 
@@ -32,9 +33,15 @@ class AiomysqlTester(BaseTester):
 
     async def _main_coroutine(self, database_specification, output_directory):
         """ """
+
+        host = Envvar("MYSQL_HOST")
+        assert host.is_set
+        port = Envvar("MYSQL_PORT", default=3306)
+        assert port.is_set
+
         pool = await aiomysql.create_pool(
-            host="docker-mysql",
-            port=3306,
+            host=host.value,
+            port=int(port.value),
             user="root",
             password="root",
             db="mysql",

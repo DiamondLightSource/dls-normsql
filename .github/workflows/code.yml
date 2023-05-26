@@ -48,9 +48,19 @@ jobs:
             install: ".[dev,docs]"
 
     runs-on: ${{ matrix.os }}
+
+    services:
+      mysql_service:
+        image: mysql:8.0
+        ports:
+          - 3306:3306
+        env:
+          MYSQL_ROOT_PASSWORD: root
+
     env:
       # https://github.com/pytest-dev/pytest/issues/2042
       PY_IGNORE_IMPORTMISMATCH: "1"
+      MYSQL_HOST: 127.0.0.1
 
     steps:
       - name: Checkout
@@ -211,5 +221,4 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.PYPI_TOKEN }}
-
 # dae_devops_fingerprint 39b6ade54ad4279a47cb3da654b3721e

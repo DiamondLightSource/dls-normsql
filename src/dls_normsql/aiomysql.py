@@ -14,6 +14,7 @@ import aiomysql
 
 # Utilities.
 from dls_utilpack.callsign import callsign
+from dls_utilpack.envvar import Envvar
 from dls_utilpack.explain import explain
 from dls_utilpack.isodatetime import isodatetime_filename
 from dls_utilpack.require import require
@@ -47,9 +48,24 @@ class Aiomysql:
         # We might use values in type_specific_tbd during the connection method.
         self.__type_specific_tbd = t
 
+        # We will do environment variable substitution for host and port if they start with $.
         self.__host = require(s, t, "host")
+        if self.__host.startswith("$"):
+            envvar = Envvar(self.__host[1:])
+            if not envvar.is_set:
+                raise RuntimeError(
+                    f"configuration error: environment variable {self.__host[1:]} is not set"
+                )
+            self.__host = envvar.value
 
         self.__port = require(s, t, "port")
+        if self.__port.startswith("$"):
+            envvar = Envvar(self.__port[1:], default=3306)
+            if not envvar.is_set:
+                raise RuntimeError(
+                    f"configuration error: environment variable {self.__port[1:]} is not set"
+                )
+            self.__port = int(envvar.value)
 
         self.__username = require(s, t, "username")
 
