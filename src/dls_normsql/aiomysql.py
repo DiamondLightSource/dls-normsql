@@ -56,7 +56,7 @@ class Aiomysql:
             self.__host = envvar.value
 
         self.__port = require(s, t, "port")
-        if self.__port.startswith("$"):
+        if str(self.__port).startswith("$"):
             envvar = Envvar(self.__port[1:], default=3306)
             if not envvar.is_set:
                 raise RuntimeError(
