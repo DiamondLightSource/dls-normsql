@@ -60,7 +60,7 @@ jobs:
     env:
       # https://github.com/pytest-dev/pytest/issues/2042
       PY_IGNORE_IMPORTMISMATCH: "1"
-      MYSQL_HOST: 127.0.0.1
+      MYSQL_HOST: mysql_service
 
     steps:
       - name: Checkout
