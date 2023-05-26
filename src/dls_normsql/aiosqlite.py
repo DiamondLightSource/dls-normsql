@@ -13,6 +13,7 @@ import aiosqlite
 
 # Utilities.
 from dls_utilpack.callsign import callsign
+from dls_utilpack.describe import describe
 from dls_utilpack.explain import explain
 from dls_utilpack.isodatetime import isodatetime_filename
 from dls_utilpack.require import require
@@ -71,6 +72,66 @@ class Aiosqlite:
         self.__last_restore = 0
 
     # ----------------------------------------------------------------------------------------
+    async def __get_isolation_level(self):
+        # Read the current isolation level
+        cursor = await self.__connection.execute("PRAGMA isolation_level")
+        result = await cursor.fetchone()
+
+        logger.debug(describe("result", result))
+
+        if result is None:
+            isolation_level = ""
+        else:
+            isolation_level = result[0]
+
+        return isolation_level
+
+    # ----------------------------------------------------------------------------------------
+    async def __set_isolation_level(self):
+        """
+        Set the isolation level on the connection.
+
+        Set isolation level such that all statements which are not already in an explicit transaction
+        are autocommitted immediately and visible on other connections.
+        This might be less efficient?  But it's nice when monitoring a sqlite file with a management tool.
+        TODO: Consider the ramifications of setting aiosqlite isolation_level to None.
+        """
+
+        # Possible values are None, '' (default), DEFERRED, and EXCLUSIVE.
+        # Default if not mentioned in the configuration is None.
+        configured_isolation_level = self.__type_specific_tbd.get("isolation_level", "")
+        previous_isolation_level = await self.__get_isolation_level()
+
+        logger.debug(describe("previous_isolation_level", previous_isolation_level))
+
+        if configured_isolation_level == previous_isolation_level:
+            logger.debug(
+                f"isolation_level is already the configured '{configured_isolation_level}'"
+            )
+        else:
+            logger.debug(
+                f"isolation_level is needs to be set from '{previous_isolation_level}' to '{configured_isolation_level}'"
+            )
+
+            if configured_isolation_level is None:
+                await self.execute("PRAGMA isolation_level =")
+            else:
+                await self.execute(
+                    f"PRAGMA isolation_level = {configured_isolation_level}"
+                )
+            await self.commit()
+
+            readback_isolation_level = await self.__get_isolation_level()
+
+            if readback_isolation_level != configured_isolation_level:
+                raise RuntimeError(
+                    f"readback isolation level '{readback_isolation_level}' does not match '{configured_isolation_level}' as was set"
+                )
+            logger.debug(
+                f"isolation_level is now set from '{previous_isolation_level}' to '{readback_isolation_level}'"
+            )
+
+    # ----------------------------------------------------------------------------------------
     async def connect(self, should_drop_database=False):
         """
         Connect to database at filename given in constructor.
@@ -96,8 +157,11 @@ class Aiosqlite:
             # This might be less efficient?  But it's nice when monitoring a sqlite file with a management tool.
             # TODO: Consider the ramifications of setting aiosqlite isolation_level to None.
             # Possible values are None, '' (default), DEFERRED, and EXCLUSIVE.
+            logger.debug(
+                f"isolation_level was set to '{self.__connection.isolation_level}'"
+            )
             isolation_level = self.__type_specific_tbd.get("isolation_level", None)
-            self.__connection.isolation_level = isolation_level
+            # self.__connection.isolation_level = isolation_level
             logger.debug(
                 f"isolation_level is now set to '{self.__connection.isolation_level}'"
             )
@@ -232,6 +296,9 @@ class Aiosqlite:
         """
         Begin transaction.
         """
+
+        # Close off any transactions underway.
+        await self.__connection.commit()
 
         await self.__connection.execute("BEGIN")
 
