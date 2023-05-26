@@ -56,7 +56,7 @@ jobs:
           - 3306:3306
         env:
           MYSQL_ROOT_PASSWORD: root
-        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=5
 
     env:
       # https://github.com/pytest-dev/pytest/issues/2042
@@ -79,6 +79,9 @@ jobs:
 
       - name: List dependency tree
         run: pipdeptree
+
+      - name: Check MySQL service container status
+        run: docker ps
 
       - name: Run tests
         run: |
