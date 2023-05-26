@@ -13,7 +13,6 @@ import aiosqlite
 
 # Utilities.
 from dls_utilpack.callsign import callsign
-from dls_utilpack.describe import describe
 from dls_utilpack.explain import explain
 from dls_utilpack.isodatetime import isodatetime_filename
 from dls_utilpack.require import require
