@@ -37,7 +37,7 @@ class TestDatabaseAiomysql:
         Tests the mysql implementation of Database.
         """
 
-        host = Envvar("MYSQL_HOST")
+        host = Envvar("MYSQL_HOST", default="127.0.0.1")
         assert host.is_set
         port = Envvar("MYSQL_PORT", default=3306)
         assert port.is_set
