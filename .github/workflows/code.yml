@@ -61,8 +61,6 @@ jobs:
     env:
       # https://github.com/pytest-dev/pytest/issues/2042
       PY_IGNORE_IMPORTMISMATCH: "1"
-      MYSQL_HOST: 127.0.0.1
-      MYSQL_PORT: ${{ jobs.services.mysql_service.ports[3306] }}
 
     steps:
       - name: Checkout
@@ -84,7 +82,13 @@ jobs:
       - name: Check MySQL service container status
         run: docker ps
 
+      - name: Start up the MySQL that comes with Unbuntu
+        run: sudo /etc/init.d/mysql start
+
       - name: Run tests
+        env:
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_PORT: ${{ job.services.mysql_service.ports[3306] }}
         run: |
           sudo apt install environment-modules
           export MODULESHOME=/usr/share/modules
