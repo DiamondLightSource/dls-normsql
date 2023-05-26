@@ -8,7 +8,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>dls_normsql.databases &#8212; dls-normsql 1.2.2.dev1+g91ac055 documentation</title>
+    <title>dls_normsql.databases &#8212; dls-normsql 1.2.3.dev19+gdc3b251 documentation</title>
   
   
   
@@ -353,14 +353,14 @@ document.write(`
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="c1"># ----------------------------------------------------------------------------------------</span>
-    <span class="k">def</span> <span class="nf">build_object</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">specification</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">build_object</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">specification</span><span class="p">,</span> <span class="n">database_definition_object</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;&quot;&quot;&quot;</span>
 
         <span class="n">class_type</span> <span class="o">=</span> <span class="n">require</span><span class="p">(</span><span class="s2">&quot;database specification&quot;</span><span class="p">,</span> <span class="n">specification</span><span class="p">,</span> <span class="s2">&quot;type&quot;</span><span class="p">)</span>
         <span class="n">database_class</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lookup_class</span><span class="p">(</span><span class="n">class_type</span><span class="p">)</span>
 
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">database_object</span> <span class="o">=</span> <span class="n">database_class</span><span class="p">(</span><span class="n">specification</span><span class="p">)</span>
+            <span class="n">database_object</span> <span class="o">=</span> <span class="n">database_class</span><span class="p">(</span><span class="n">specification</span><span class="p">,</span> <span class="n">database_definition_object</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exception</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
                 <span class="s2">&quot;unable to build database object for type </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">database_class</span><span class="p">)</span>
@@ -376,6 +376,11 @@ document.write(`
             <span class="kn">from</span> <span class="nn">dls_normsql.aiosqlite</span> <span class="kn">import</span> <span class="n">Aiosqlite</span>
 
             <span class="k">return</span> <span class="n">Aiosqlite</span>
+
+        <span class="k">if</span> <span class="n">class_type</span> <span class="o">==</span> <span class="n">ClassTypes</span><span class="o">.</span><span class="n">AIOMYSQL</span><span class="p">:</span>
+            <span class="kn">from</span> <span class="nn">dls_normsql.aiomysql</span> <span class="kn">import</span> <span class="n">Aiomysql</span>
+
+            <span class="k">return</span> <span class="n">Aiomysql</span>
 
         <span class="k">raise</span> <span class="n">NotFound</span><span class="p">(</span><span class="s2">&quot;unable to get database class for type </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">class_type</span><span class="p">))</span></div>
 </pre></div>
