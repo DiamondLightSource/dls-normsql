@@ -1,5 +1,5 @@
 .. # ********** Please don't edit this file!
-.. # ********** It has been generated automatically by dae_devops version 0.5.3.dev1+g36e9e1c.d20230523.
+.. # ********** It has been generated automatically by dae_devops version 0.5.3.
 .. # ********** For repository_name dls-normsql
 
 Installing
@@ -39,4 +39,4 @@ You can check the version that has been installed by typing::
     $ dls-normsql --version
     $ dls-normsql --version-json
 
-.. # dae_devops_fingerprint 9c071b85e47a709fdf94b44c012d3f03
+.. # dae_devops_fingerprint a2fe8dfbc79c151a5b899b244a529aa6

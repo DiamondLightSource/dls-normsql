@@ -1,5 +1,5 @@
 .. # ********** Please don't edit this file!
-.. # ********** It has been generated automatically by dae_devops version 0.5.3.dev1+g36e9e1c.d20230523.
+.. # ********** It has been generated automatically by dae_devops version 0.5.3.
 .. # ********** For repository_name dls-normsql
 
 Devops
@@ -44,4 +44,4 @@ Publishing (for the Diamond intranet)::
     
 The Diamond intranet commands are not used for production. The production packaging and publishing are handled in the GitHub Actions workflows mechanism.
 
-.. # dae_devops_fingerprint 315edec766c8c72d01b0fa9707eddd83
+.. # dae_devops_fingerprint d9ee7cc6b002b3508a4e55f96193c35e

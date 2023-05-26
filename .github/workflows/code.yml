@@ -1,5 +1,5 @@
 # ********** Please don't edit this file!
-# ********** It has been generated automatically by dae_devops version 0.5.3.dev1+g36e9e1c.d20230523.
+# ********** It has been generated automatically by dae_devops version 0.5.3.
 # ********** For repository_name dls-normsql
 
 name: Code CI
@@ -39,7 +39,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ["ubuntu-latest"] # can add windows-latest, macos-latest
-        python: ["3.10", "3.11"]
+        python: ["3.10"]
         install: ["-e .[dev,docs]"]
         # Make one version be non-editable to test both paths of version code
         include:
@@ -48,16 +48,6 @@ jobs:
             install: ".[dev,docs]"
 
     runs-on: ${{ matrix.os }}
-
-    services:
-      mysql_service:
-        image: mysql:8.0
-        ports:
-          - 3306
-        env:
-          MYSQL_ROOT_PASSWORD: root
-        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=5
-
     env:
       # https://github.com/pytest-dev/pytest/issues/2042
       PY_IGNORE_IMPORTMISMATCH: "1"
@@ -79,16 +69,11 @@ jobs:
       - name: List dependency tree
         run: pipdeptree
 
-      - name: Check MySQL service container status
-        run: docker ps
-
+      # TODO: Make startup of MySQL able to be configured.
       - name: Start up the MySQL that comes with Unbuntu
         run: sudo /etc/init.d/mysql start
 
       - name: Run tests
-        env:
-          MYSQL_HOST: 127.0.0.1
-          # MYSQL_PORT: ${{ job.services.mysql_service.ports[3306] }}
         run: |
           sudo apt install environment-modules
           export MODULESHOME=/usr/share/modules
@@ -230,4 +215,5 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.PYPI_TOKEN }}
-# dae_devops_fingerprint 39b6ade54ad4279a47cb3da654b3721e
+
+# dae_devops_fingerprint d13e8289ca6252679ab7d9ae8db75617

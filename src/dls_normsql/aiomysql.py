@@ -51,7 +51,7 @@ class Aiomysql:
         # We will do environment variable substitution for host and port if they start with $.
         self.__host = require(s, t, "host")
         if self.__host.startswith("$"):
-            envvar = Envvar(self.__host[1:])
+            envvar = Envvar(self.__host[1:], default="127.0.0.1")
             if not envvar.is_set:
                 raise RuntimeError(
                     f"configuration error: environment variable {self.__host[1:]} is not set"
