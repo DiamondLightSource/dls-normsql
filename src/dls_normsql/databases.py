@@ -19,14 +19,14 @@ class Databases:
     """
 
     # ----------------------------------------------------------------------------------------
-    def build_object(self, specification):
+    def build_object(self, specification, database_definition_object):
         """"""
 
         class_type = require("database specification", specification, "type")
         database_class = self.lookup_class(class_type)
 
         try:
-            database_object = database_class(specification)
+            database_object = database_class(specification, database_definition_object)
         except Exception as exception:
             raise RuntimeError(
                 "unable to build database object for type %s" % (database_class)
@@ -42,5 +42,10 @@ class Databases:
             from dls_normsql.aiosqlite import Aiosqlite
 
             return Aiosqlite
+
+        if class_type == ClassTypes.AIOMYSQL:
+            from dls_normsql.aiomysql import Aiomysql
+
+            return Aiomysql
 
         raise NotFound("unable to get database class for type %s" % (class_type))

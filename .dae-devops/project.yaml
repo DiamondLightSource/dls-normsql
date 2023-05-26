@@ -13,5 +13,8 @@ primary:
   dependencies:
     - type: pypi
       list:
-        - aiosqlite
         - dls-utilpack
+        - aiosqlite
+        - aiomysql
+        # cryptography package is required for aiomysql sha256_password or caching_sha2_password auth methods
+        - cryptography

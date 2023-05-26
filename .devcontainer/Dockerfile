@@ -1,5 +1,5 @@
 # ********** Please don't edit this file!
-# ********** It has been generated automatically by dae_devops version 0.5.2.
+# ********** It has been generated automatically by dae_devops version 0.5.3.
 # ********** For repository_name dls-normsql
 
 # This file is for use as a devcontainer and a runtime container
@@ -40,4 +40,4 @@ ENV PATH=/venv/bin:$PATH
 ENTRYPOINT ["dls-normsql"]
 CMD ["--version"]
 
-# dae_devops_fingerprint 41ae7527130d2727aa06cd91ff8e5702
+# dae_devops_fingerprint a5c05253a7982ce4ee2e60abd1a254f0

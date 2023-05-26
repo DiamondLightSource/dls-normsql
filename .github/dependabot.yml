@@ -1,5 +1,5 @@
 # ********** Please don't edit this file!
-# ********** It has been generated automatically by dae_devops version 0.5.2.
+# ********** It has been generated automatically by dae_devops version 0.5.3.
 # ********** For repository_name dls-normsql
 
 # To get started with Dependabot version updates, you'll need to specify which
@@ -19,4 +19,4 @@ updates:
     schedule:
       interval: "weekly"
 
-# dae_devops_fingerprint b8759630d6502121150bac83a60ac05d
+# dae_devops_fingerprint 61dd9f51dc2d4a0486ac8a76be91051f

@@ -1,5 +1,5 @@
 # ********** Please don't edit this file!
-# ********** It has been generated automatically by dae_devops version 0.5.2.
+# ********** It has been generated automatically by dae_devops version 0.5.3.
 # ********** For repository_name dls-normsql
 
 name: Link Check
@@ -27,4 +27,4 @@ jobs:
       - name: Check links
         run: tox -e docs build -- -b linkcheck
 
-# dae_devops_fingerprint f31df44c662aa0a356bb2a62fe64eade
+# dae_devops_fingerprint 674bb9fc122cc739ba92fe18045f0f1f

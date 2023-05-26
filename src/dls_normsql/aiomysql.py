@@ -4,15 +4,17 @@ import glob
 # This class produces log entries.
 import logging
 import os
-import re
 import shutil
+import warnings
 from collections import OrderedDict
 from datetime import datetime
+from typing import Any, List
 
-import aiosqlite
+import aiomysql
 
 # Utilities.
 from dls_utilpack.callsign import callsign
+from dls_utilpack.envvar import Envvar
 from dls_utilpack.explain import explain
 from dls_utilpack.isodatetime import isodatetime_filename
 from dls_utilpack.require import require
@@ -27,13 +29,7 @@ apply_revisions_lock = asyncio.Lock()
 
 
 # ----------------------------------------------------------------------------------------
-def sqlite_regexp_callback(pattern, input):
-    reg = re.compile(pattern)
-    return reg.search(input) is not None
-
-
-# ----------------------------------------------------------------------------------------
-class Aiosqlite:
+class Aiomysql:
     """
     Class with coroutines for creating and querying a sqlite database.
     """
@@ -43,25 +39,41 @@ class Aiosqlite:
         """
         Construct object.  Do not connect to database.
         """
-        self.__filename = require(
-            f"{callsign(self)} specification", specification, "filename"
-        )
+        self.__database_definition_object = database_definition_object
 
-        # Default is an empty type_specific_tbd.
-        self.__type_specific_tbd = specification.get("type_specific_tbd", {})
+        s = f"{callsign(self)} specification"
 
-        # Backup directory default is the path where the filename is.
-        self.__backup_directory = specification.get(
-            "backup_directory", os.path.dirname(self.__filename)
-        )
+        t = require(s, specification, "type_specific_tbd")
 
-        # Don't normally want to see all the debug for aiosqlite internals.
-        level = specification.get("log_level", "INFO")
-        logging.getLogger("aiosqlite").setLevel(level)
+        # We might use values in type_specific_tbd during the connection method.
+        self.__type_specific_tbd = t
+
+        # We will do environment variable substitution for host and port if they start with $.
+        self.__host = require(s, t, "host")
+        if self.__host.startswith("$"):
+            envvar = Envvar(self.__host[1:], default="127.0.0.1")
+            if not envvar.is_set:
+                raise RuntimeError(
+                    f"configuration error: environment variable {self.__host[1:]} is not set"
+                )
+            self.__host = envvar.value
+
+        self.__port = require(s, t, "port")
+        if self.__port.startswith("$"):
+            envvar = Envvar(self.__port[1:], default=3306)
+            if not envvar.is_set:
+                raise RuntimeError(
+                    f"configuration error: environment variable {self.__port[1:]} is not set"
+                )
+            self.__port = int(envvar.value)
+
+        self.__username = require(s, t, "username")
+
+        self.__password = require(s, t, "password")
+
+        self.__database_name = require(s, t, "database_name")
 
         self.__connection = None
-
-        self.__database_definition_object = database_definition_object
 
         self.__tables = {}
 
@@ -76,6 +88,16 @@ class Aiosqlite:
         self.__last_restore = 0
 
     # ----------------------------------------------------------------------------------------
+    def __parameterize(self, sql: str, subs: List[Any]):
+        """
+        Connect to database at filename given in constructor.
+        """
+
+        sql = sql.replace("?", "%s")
+
+        return sql
+
+    # ----------------------------------------------------------------------------------------
     async def connect(self, should_drop_database=False):
         """
         Connect to database at filename given in constructor.
@@ -84,41 +106,40 @@ class Aiosqlite:
         async with connect_lock:
             should_create_schemas = False
 
-            # File doesn't exist yet?
-            if not os.path.isfile(self.__filename):
-                # Create directory for the file.
-                await self.__create_directory(self.__filename)
-                # After connection, we must create the schemas.
-                should_create_schemas = True
+            logger.debug(f"connecting to mysql {self.__host}:{self.__port}")
 
-            logger.debug(f"connecting to {self.__filename}")
-
-            self.__connection = await aiosqlite.connect(self.__filename)
-            self.__connection.row_factory = aiosqlite.Row
-
-            # Set isolation level such that all statements which are not already in an explicit transaction
-            # are autocommitted immediately and visible on other connections.
-            # This might be less efficient?  But it's nice when monitoring a sqlite file with a management tool.
-            # TODO: Consider the ramifications of setting aiosqlite isolation_level to None.
-            # Possible values are None, '' (default), DEFERRED, and EXCLUSIVE.
-            isolation_level = self.__type_specific_tbd.get("isolation_level", None)
-            self.__connection.isolation_level = isolation_level
-            logger.debug(
-                f"isolation_level is now set to '{self.__connection.isolation_level}'"
+            self.__connection = await aiomysql.connect(
+                host=self.__host,
+                port=self.__port,
+                user=self.__username,
+                password=self.__password,
             )
 
-            # rows = await self.query("PRAGMA journal_mode", why="query journal mode")
-            # logger.debug(f"journal mode rows {json.dumps(rows)}")
+            # Allow the possibility to set the transaction isolation level so that commits on one connection are available to other connections quickly.
+            # The default was REPEATABLE READ, which is stricter, but I found I could not get committed data immediately at a second connection.
+            # TODO: Consider implications of setting aiomysql to the more relaxed TRANSACTION ISOLATION LEVEL READ COMMITTED.
+            isolation_level = self.__type_specific_tbd.get(
+                "isolation_level", "READ COMMITTED"
+            )
+            await self.execute(
+                f"SET GLOBAL TRANSACTION ISOLATION LEVEL {isolation_level}"
+            )
 
-            # rows = await self.query("PRAGMA journal_mode=OFF", why="turn OFF journal mode")
-            # logger.debug(f"journal mode OFF rows {json.dumps(rows)}")
+            logger.debug(f"autocommit is {self.__connection.get_autocommit()}")
+            try:
+                await self.execute(f"USE {self.__database_name}")
+                database_exists = True
+            except RuntimeError:
+                database_exists = False
 
-            # rows = await self.query("PRAGMA journal_mode", why="query journal mode")
-            # logger.debug(f"journal mode rows {json.dumps(rows)}")
+            if database_exists and should_drop_database:
+                await self.execute(f"DROP DATABASE {self.__database_name}")
+                database_exists = False
 
-            # rows = await self.query("SELECT * from mainTable", why="main table check")
-
-            await self.__connection.create_function("regexp", 2, sqlite_regexp_callback)
+            if not database_exists:
+                await self.execute(f"CREATE DATABASE {self.__database_name}")
+                await self.execute(f"USE {self.__database_name}")
+                should_create_schemas = True
 
             # Let the base class contribute its table definitions to the in-memory list.
             await self.add_table_definitions()
@@ -128,12 +149,10 @@ class Aiosqlite:
                 await self.insert(
                     Tablenames.REVISION, [{"number": self.LATEST_REVISION}]
                 )
-                # TODO: Set permission on sqlite file from configuration.
-                os.chmod(self.__filename, 0o666)
 
             # Emit the name of the database file for positive confirmation on console.
             logger.info(
-                f"{callsign(self)} database file is {self.__filename} code revision {self.LATEST_REVISION}"
+                f"{callsign(self)} database name is {self.__database_name} code revision {self.LATEST_REVISION}"
             )
 
     # ----------------------------------------------------------------------------------------
@@ -193,15 +212,16 @@ class Aiosqlite:
             await self.create_table(Tablenames.REVISION)
             await self.insert(Tablenames.REVISION, [{"revision": revision}])
 
-        # Let the database definition object do its thing.
-        self.__database_definition_object.apply_revisions(self)
-
     # ----------------------------------------------------------------------------------------
     async def disconnect(self):
 
         if self.__connection is not None:
-            logger.debug(f"[DISSHU] {callsign(self)} disconnecting")
-            await self.__connection.close()
+            # Commit final transaction if not currently autocommitting.
+            if not self.__connection.get_autocommit():
+                logger.debug(f"[DISSHU] {callsign(self)} committing final transaction")
+                await self.__connection.commit()
+            logger.debug(f"[DISSHU] {callsign(self)} closing connection to server")
+            self.__connection.close()
             self.__connection = None
 
     # ----------------------------------------------------------------------------------------
@@ -235,13 +255,17 @@ class Aiosqlite:
         Begin transaction.
         """
 
-        await self.__connection.execute("BEGIN")
+        logger.debug("beginning transaction")
+
+        await self.__connection.begin()
 
     # ----------------------------------------------------------------------------------------
     async def commit(self):
         """
         Commit transaction.
         """
+
+        logger.debug("committing transaction")
 
         await self.__connection.commit()
 
@@ -250,20 +274,15 @@ class Aiosqlite:
         """
         Roll back transaction.
         """
+        logger.debug("rolling back transaction")
 
         await self.__connection.rollback()
 
     # ----------------------------------------------------------------------------------------
     async def create_schemas(self):
 
-        await self.begin()
-
-        try:
-            for table in self.__tables.values():
-                await self.create_table(table)
-            await self.commit()
-        except Exception:
-            await self.rollback()
+        for table in self.__tables.values():
+            await self.create_table(table)
 
     # ----------------------------------------------------------------------------------------
     async def create_table(self, table):
@@ -275,28 +294,39 @@ class Aiosqlite:
         if isinstance(table, str):
             table = require("table definitions", self.__tables, table)
 
-        await self.__connection.execute("DROP TABLE IF EXISTS %s" % (table.name))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            await self.execute("DROP TABLE IF EXISTS %s" % (table.name))
 
-        fields_sql = []
-        indices_sql = []
+        async with self.__connection.cursor() as cursor:
 
-        for field_name in table.fields:
-            field = table.fields[field_name]
-            fields_sql.append("`%s` %s" % (field_name, field["type"]))
-            if field.get("index"):
-                indices_sql.append(
-                    "CREATE INDEX `%s_%s` ON `%s`(`%s`)"
-                    % (table.name, field_name, table.name, field_name)
-                )
+            fields_sql = []
+            indices_sql = []
 
-        sql = "CREATE TABLE `%s`\n(%s)" % (table.name, ",\n  ".join(fields_sql))
+            for field_name in table.fields:
+                field = table.fields[field_name]
+                field_type = field["type"].upper()
+                if field_type == "TEXT PRIMARY KEY":
+                    field_type = "VARCHAR(64) PRIMARY KEY"
+                fields_sql.append("`%s` %s" % (field_name, field_type))
+                if field.get("index", False):
+                    if field_type == "TEXT":
+                        index_length = "(128)"
+                    else:
+                        index_length = ""
+                    indices_sql.append(
+                        "CREATE INDEX `%s_%s` ON `%s`(`%s`%s)"
+                        % (table.name, field_name, table.name, field_name, index_length)
+                    )
 
-        logger.debug("\n%s\n%s" % (sql, "\n".join(indices_sql)))
+            sql = "CREATE TABLE `%s`\n(%s)" % (table.name, ",\n  ".join(fields_sql))
 
-        await self.__connection.execute(sql)
+            logger.debug("\n%s\n%s" % (sql, "\n".join(indices_sql)))
 
-        for sql in indices_sql:
-            await self.__connection.execute(sql)
+            await cursor.execute(sql)
+
+            for sql in indices_sql:
+                await cursor.execute(sql)
 
     # ----------------------------------------------------------------------------------------
     async def insert(
@@ -352,19 +382,20 @@ class Aiosqlite:
             ", ".join(qmarks),
         )
 
+        sql = self.__parameterize(sql, values_rows)
+
+        if why is None:
+            message = "\n%s\n%s" % (sql, values_rows)
+        else:
+            message = "%s:\n%s\n%s" % (why, sql, values_rows)
+
         try:
-            await self.__connection.executemany(sql, values_rows)
+            async with self.__connection.cursor() as cursor:
+                await cursor.executemany(sql, values_rows)
+                logger.debug(message)
 
-            if why is None:
-                logger.debug("\n%s\n%s" % (sql, values_rows))
-            else:
-                logger.debug("%s:\n%s\n%s" % (why, sql, values_rows))
-
-        except aiosqlite.OperationalError:
-            if why is None:
-                raise RuntimeError(f"failed to execute {sql}")
-            else:
-                raise RuntimeError(f"failed to execute {why}: {sql}")
+        except (TypeError, aiomysql.OperationalError) as exception:
+            raise RuntimeError(f"{exception} doing {message}")
 
     # ----------------------------------------------------------------------------------------
     async def update(
@@ -406,62 +437,77 @@ class Aiosqlite:
         if subs is not None:
             values_row.extend(subs)
 
-        try:
-            cursor = await self.__connection.execute(sql, values_row)
-            rowcount = cursor.rowcount
+        sql = self.__parameterize(sql, subs)
 
-            if why is None:
-                logger.debug(
-                    "%d rows from:\n%s\nvalues %s" % (rowcount, sql, values_row)
-                )
-            else:
-                logger.debug(
-                    "%d rows from %s:\n%s\nvalues %s" % (rowcount, why, sql, values_row)
-                )
+        async with self.__connection.cursor() as cursor:
+            try:
+                await cursor.execute(sql, values_row)
+                rowcount = cursor.rowcount
 
-        except aiosqlite.OperationalError:
-            if why is None:
-                raise RuntimeError(f"failed to execute {sql}")
-            else:
-                raise RuntimeError(f"failed to execute {why}: {sql}")
+                if why is None:
+                    logger.debug(
+                        "%d rows from:\n%s\nvalues %s" % (rowcount, sql, values_row)
+                    )
+                else:
+                    logger.debug(
+                        "%d rows from %s:\n%s\nvalues %s"
+                        % (rowcount, why, sql, values_row)
+                    )
+
+            except (TypeError, aiomysql.OperationalError):
+                if why is None:
+                    raise RuntimeError(f"failed to execute {sql}")
+                else:
+                    raise RuntimeError(f"failed to execute {why}: {sql}")
 
         return rowcount
 
     # ----------------------------------------------------------------------------------------
-    async def execute(self, sql, subs=None, why=None):
+    async def execute(
+        self,
+        sql,
+        subs=None,
+        why=None,
+    ):
         """
         Execute a sql statement.
         If subs is a list of lists, then these are presumed the values for executemany.
         """
 
-        cursor = None
-        try:
-            # Subs is a list of lists?
-            if isinstance(subs, list) and len(subs) > 0 and isinstance(subs[0], list):
-                logger.debug(f"inserting {len(subs)} of {len(subs[0])}")
-                cursor = await self.__connection.executemany(sql, subs)
-            else:
-                cursor = await self.__connection.execute(sql, subs)
+        async with self.__connection.cursor() as cursor:
+            try:
+                sql = self.__parameterize(sql, subs)
 
-            if why is None:
-                if cursor.rowcount > 0:
-                    logger.debug(
-                        f"{cursor.rowcount} records affected by\n{sql} values {subs}"
-                    )
+                # Subs is a list of lists?
+                if (
+                    isinstance(subs, list)
+                    and len(subs) > 0
+                    and isinstance(subs[0], list)
+                ):
+                    logger.debug(f"inserting {len(subs)} of {len(subs[0])}")
+                    await cursor.executemany(sql, subs)
                 else:
-                    logger.debug(f"{sql} values {subs}")
-            else:
-                if cursor.rowcount > 0:
-                    logger.debug(
-                        f"{cursor.rowcount} records affected by {why}:\n{sql} values {subs}"
-                    )
+                    await cursor.execute(sql, subs)
+
+                if why is None:
+                    if cursor.rowcount > 0:
+                        logger.debug(
+                            f"{cursor.rowcount} records affected by\n{sql}\nvalues {subs}"
+                        )
+                    else:
+                        logger.debug(f"{sql}\nvalues {subs}")
                 else:
-                    logger.debug(f"{why}: {sql} values {subs}")
-        except aiosqlite.OperationalError:
-            if why is None:
-                raise RuntimeError(f"failed to execute {sql}")
-            else:
-                raise RuntimeError(f"failed to execute {why}: {sql}")
+                    if cursor.rowcount > 0:
+                        logger.debug(
+                            f"{cursor.rowcount} records affected by {why}:\n{sql} values {subs}"
+                        )
+                    else:
+                        logger.debug(f"{why}: {sql}\nvalues {subs}")
+            except (TypeError, aiomysql.OperationalError):
+                if why is None:
+                    raise RuntimeError(f"failed to execute {sql}")
+                else:
+                    raise RuntimeError(f"failed to execute {why}: {sql}")
 
     # ----------------------------------------------------------------------------------------
     async def query(self, sql, subs=None, why=None):
@@ -469,34 +515,34 @@ class Aiosqlite:
         if subs is None:
             subs = {}
 
-        cursor = None
-        try:
-            cursor = await self.__connection.cursor()
-            await cursor.execute(sql, subs)
-            rows = await cursor.fetchall()
-            cols = []
-            for col in cursor.description:
-                cols.append(col[0])
+        sql = self.__parameterize(sql, subs)
 
-            if why is None:
-                logger.debug("%d records from: %s" % (len(rows), sql))
-            else:
-                logger.debug("%d records from %s: %s" % (len(rows), why, sql))
-            records = []
-            for row in rows:
-                record = OrderedDict()
-                for index, col in enumerate(cols):
-                    record[col] = row[index]
-                records.append(record)
-            return records
-        except aiosqlite.OperationalError as exception:
-            if why is None:
-                raise RuntimeError(explain(exception, f"executing {sql}"))
-            else:
-                raise RuntimeError(explain(exception, f"executing {why}: {sql}"))
-        finally:
-            if cursor is not None:
-                await cursor.close()
+        cursor = None
+        async with self.__connection.cursor() as cursor:
+            try:
+                cursor = await self.__connection.cursor()
+                await cursor.execute(sql, subs)
+                rows = await cursor.fetchall()
+                cols = []
+                for col in cursor.description:
+                    cols.append(col[0])
+
+                if why is None:
+                    logger.debug("%d records from: %s" % (len(rows), sql))
+                else:
+                    logger.debug("%d records from %s: %s" % (len(rows), why, sql))
+                records = []
+                for row in rows:
+                    record = OrderedDict()
+                    for index, col in enumerate(cols):
+                        record[col] = row[index]
+                    records.append(record)
+                return records
+            except (TypeError, aiomysql.OperationalError) as exception:
+                if why is None:
+                    raise RuntimeError(explain(exception, f"executing {sql}"))
+                else:
+                    raise RuntimeError(explain(exception, f"executing {why}: {sql}"))
 
     # ----------------------------------------------------------------------------------------
     async def backup(self):
@@ -510,7 +556,7 @@ class Aiosqlite:
             if directory is None:
                 raise RuntimeError("no backup directory supplied in confirmation")
 
-            basename, suffix = os.path.splitext(os.path.basename(self.__filename))
+            basename, suffix = os.path.splitext(os.path.basename(self.__database_name))
 
             filenames = glob.glob(f"{directory}/{basename}.*{suffix}")
 
@@ -530,10 +576,12 @@ class Aiosqlite:
             await self.disconnect()
             try:
                 await self.__create_directory(to_filename)
-                shutil.copy2(self.__filename, to_filename)
+                shutil.copy2(self.__database_name, to_filename)
                 logger.debug(f"backed up to {to_filename}")
             except Exception:
-                raise RuntimeError(f"copy {self.__filename} to {to_filename} failed")
+                raise RuntimeError(
+                    f"copy {self.__database_name} to {to_filename} failed"
+                )
             finally:
                 await self.connect()
 
@@ -548,7 +596,7 @@ class Aiosqlite:
             if directory is None:
                 raise RuntimeError("no backup directory supplied in confirmation")
 
-            basename, suffix = os.path.splitext(os.path.basename(self.__filename))
+            basename, suffix = os.path.splitext(os.path.basename(self.__database_name))
 
             filenames = glob.glob(f"{directory}/{basename}.*{suffix}")
 
@@ -563,12 +611,14 @@ class Aiosqlite:
 
             await self.disconnect()
             try:
-                shutil.copy2(from_filename, self.__filename)
+                shutil.copy2(from_filename, self.__database_name)
                 logger.debug(
                     f"restored nth {nth} out of {len(filenames)} from {from_filename}"
                 )
             except Exception:
-                raise RuntimeError(f"copy {from_filename} to {self.__filename} failed")
+                raise RuntimeError(
+                    f"copy {from_filename} to {self.__database_name} failed"
+                )
             finally:
                 await self.connect()
 
