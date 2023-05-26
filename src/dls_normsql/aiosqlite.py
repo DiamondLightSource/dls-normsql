@@ -65,11 +65,6 @@ class Aiosqlite:
 
         self.__tables = {}
 
-        # Deriving class has not established its latest revision?
-        if not hasattr(self, "LATEST_REVISION") or self.LATEST_REVISION is None:
-            # Presume it is 1.
-            self.LATEST_REVISION = 1
-
         self.__backup_restore_lock = asyncio.Lock()
 
         # Last undo position.
@@ -126,14 +121,15 @@ class Aiosqlite:
             if should_create_schemas:
                 await self.create_schemas()
                 await self.insert(
-                    Tablenames.REVISION, [{"number": self.LATEST_REVISION}]
+                    Tablenames.REVISION,
+                    [{"number": self.__database_definition_object.LATEST_REVISION}],
                 )
                 # TODO: Set permission on sqlite file from configuration.
                 os.chmod(self.__filename, 0o666)
 
             # Emit the name of the database file for positive confirmation on console.
             logger.info(
-                f"{callsign(self)} database file is {self.__filename} code revision {self.LATEST_REVISION}"
+                f"{callsign(self)} database file is {self.__filename} database definition revision {self.__database_definition_object.LATEST_REVISION}"
             )
 
     # ----------------------------------------------------------------------------------------
@@ -151,36 +147,38 @@ class Aiosqlite:
                     why="get database revision",
                 )
                 if len(records) == 0:
-                    old_revision = 0
+                    database_revision = 0
                 else:
-                    old_revision = records[0]["number"]
+                    database_revision = records[0]["number"]
             except Exception as exception:
                 logger.warning(
                     f"could not get revision, presuming legacy database with no table: {exception}"
                 )
-                old_revision = 0
+                database_revision = 0
 
-            if old_revision < self.LATEST_REVISION:
+            if database_revision < self.__database_definition_object.LATEST_REVISION:
                 # Backup before applying revisions.
                 logger.debug(
-                    f"[BKREVL] backing up before updating from revision {old_revision} to revision {self.LATEST_REVISION}"
+                    f"[BKREVL] backing up before updating from database revision {database_revision}"
+                    f" to definition revision {self.__database_definition_object.LATEST_REVISION}"
                 )
 
                 await self.backup()
 
-                for revision in range(old_revision, self.LATEST_REVISION):
-                    logger.debug(f"updating to revision {revision+1}")
+                for revision in range(
+                    database_revision, self.__database_definition_object.LATEST_REVISION
+                ):
                     await self.apply_revision(revision + 1)
                 await self.update(
                     Tablenames.REVISION,
-                    {"number": self.LATEST_REVISION},
+                    {"number": self.__database_definition_object.LATEST_REVISION},
                     "1 = 1",
                     why="update database revision",
                 )
             else:
                 logger.debug(
-                    f"[BKREVL] no need to update persistent revision {old_revision}"
-                    f" which matches code revision {self.LATEST_REVISION}"
+                    f"[BKREVL] no need to update database revision {database_revision}"
+                    f" which matches definition revision {self.__database_definition_object.LATEST_REVISION}"
                 )
 
     # ----------------------------------------------------------------------------------------
@@ -194,7 +192,7 @@ class Aiosqlite:
             await self.insert(Tablenames.REVISION, [{"revision": revision}])
 
         # Let the database definition object do its thing.
-        self.__database_definition_object.apply_revisions(self)
+        await self.__database_definition_object.apply_revision(self, revision)
 
     # ----------------------------------------------------------------------------------------
     async def disconnect(self):
