@@ -29,7 +29,7 @@ class MyDatabaseDefinition:
             await database.execute("CREATE TABLE `my_table2` (`number` INTEGER)")
 
             await database.execute(
-                f"ALTER TABLE my_table2 ADD COLUMN string TEXT",
+                "ALTER TABLE my_table2 ADD COLUMN string TEXT",
             )
 
     # ----------------------------------------------------------------------------------------

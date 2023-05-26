@@ -1,10 +1,8 @@
 import asyncio
-import glob
 
 # This class produces log entries.
 import logging
 import os
-import shutil
 import warnings
 from collections import OrderedDict
 from datetime import datetime
@@ -16,7 +14,6 @@ import aiomysql
 from dls_utilpack.callsign import callsign
 from dls_utilpack.envvar import Envvar
 from dls_utilpack.explain import explain
-from dls_utilpack.isodatetime import isodatetime_filename
 from dls_utilpack.require import require
 
 from dls_normsql.constants import CommonFieldnames, RevisionFieldnames, Tablenames
