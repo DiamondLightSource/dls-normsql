@@ -446,6 +446,27 @@ class Aiosqlite:
                 raise RuntimeError(f"failed to execute {why}: {sql}")
 
     # ----------------------------------------------------------------------------------------
+    def __format_debug(self, why, rows, sql, subs):
+        parts = ""
+
+        if rows is not None:
+            parts += f"{len(rows)} records from"
+
+        if why is not None:
+            parts += " " + why
+
+        if len(parts) > 0:
+            parts += ": "
+
+        parts += sql
+
+        if subs is not None and len(subs) > 0:
+            parts += "\n  "
+            parts += str(subs)
+
+        return parts
+
+    # ----------------------------------------------------------------------------------------
     async def query(self, sql, subs=None, why=None):
 
         if subs is None:
@@ -460,10 +481,8 @@ class Aiosqlite:
             for col in cursor.description:
                 cols.append(col[0])
 
-            if why is None:
-                logger.debug("%d records from: %s" % (len(rows), sql))
-            else:
-                logger.debug("%d records from %s: %s" % (len(rows), why, sql))
+            logger.debug(self.__format_debug(why, rows, sql, subs))
+
             records = []
             for row in rows:
                 record = OrderedDict()
