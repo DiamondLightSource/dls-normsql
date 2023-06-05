@@ -71,6 +71,10 @@ class Aiosqlite:
         self.__last_restore = 0
 
     # ----------------------------------------------------------------------------------------
+    # In aiosqlite, autocommit is enabled by default, which means changes made to the database are automatically committed
+    # after each SQL statement execution. This behavior aligns with the common usage patterns in asynchronous programming,
+    # where individual database operations are often executed within a coroutine or an asynchronous function.
+
     async def connect(self, should_drop_database=False):
         """
         Connect to database at filename given in constructor.
