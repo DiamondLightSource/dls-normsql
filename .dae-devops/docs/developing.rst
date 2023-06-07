@@ -9,11 +9,12 @@ If you plan to make change to the code in this repository, you can use the steps
 
 Clone the repository::
 
+    $ cd <your development area>
     $ git clone https://gitlab.diamond.ac.uk/kbp43231/dls-normsql.git
 
 It is recommended that you install into a virtual environment so this
 installation will not interfere with any existing Python software.
-Make sure to have at least python version 3.9 then::
+Make sure to have at least python version 3.10 then::
 
     $ python3 -m venv /scratch/$USER/myvenv
     $ source /scratch/$USER/myvenv/bin/activate
@@ -22,17 +23,9 @@ Make sure to have at least python version 3.9 then::
 Install the package in edit mode which will also install all its dependencies::
 
     $ cd dls-normsql
-    $ pip install -e .[dev]
+    $ pip install -e .[dev,docs]
 
 Now you may begin modifying the code.
 
-|
 
-If you plan to modify the docs, you will need to::
-
-    $ pip install -e .[docs]
-
-    
-
-
-.. # dae_devops_fingerprint 7b83e003f8bbbf54c27b4bd8141fb0e5
+.. # dae_devops_fingerprint b23d73dd4de218c9524358cf343938e7

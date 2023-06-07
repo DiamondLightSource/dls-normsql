@@ -55,7 +55,7 @@ extensions = [
 
 # If true, Sphinx will warn about all references where the target cannot
 # be found.
-nitpicky = True
+nitpicky = False
 
 # A list of (type, target) tuples (by default empty) that should be ignored when
 # generating warnings in "nitpicky mode". Note that type should include the
@@ -188,7 +188,7 @@ ultimate_replacements = {
     "$" + "{repository_name}": "dls-normsql",
     "$" + "{package_name}": "dls_normsql",
     "$" + "{git_url}": "https://gitlab.diamond.ac.uk/kbp43231",
-    "$" + "{python_version_at_least}": "3.9",
+    "$" + "{python_version_at_least}": "3.10",
 }
 
 
@@ -197,4 +197,4 @@ def setup(app):
     app.connect("source-read", ultimateReplace)
 
 
-# dae_devops_fingerprint cd8b8b6c6077d960c9ed6af1579909b3
+# dae_devops_fingerprint 0afc2bceebf806891327ed822e2760a9

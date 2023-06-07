@@ -23,12 +23,12 @@ If you want to see more output of the test while it's running you can do::
 
 Each test will write files into its own directory::
 
-    /tmp/dls-normsql/tests/....
+    /tmp/dls-normsql/tests/*
 
 The tests clear their directory when they start, but not when they finish.
-This allows peeking in there to see what's been written by the test.
+This allows you to examine what's been written by the test.
 
     
 
 
-.. # dae_devops_fingerprint 1801aaf6bd998d192c9fb4cdd6c3e79f
+.. # dae_devops_fingerprint 69544ab25d1fea250e99af1cf0c84506

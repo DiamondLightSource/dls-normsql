@@ -6,11 +6,11 @@ Installing
 =======================================================================
 
 
-You will need python 3.9 or later. 
+You will need python 3.10 or later. 
 
-On a Diamond Light Source internal computer, you can achieve Python 3.9 by::
+On a Diamond Light Source internal computer, you can achieve Python 3.10 by::
 
-    $ module load python/3.9
+    $ module load python/3.10
 
 You can check your version of python by typing into a terminal::
 
@@ -24,19 +24,19 @@ installation will not interfere with any existing Python software::
     $ pip install --upgrade pip
 
 
-You can now use ``pip`` to install the library and its dependencies::
+You can now use ``pip`` to install the package and its dependencies::
 
     $ python3 -m pip install dls-normsql
 
-If you require a feature that is not currently released you can also install
+If you require a feature that is not currently released, you can also install
 from git::
 
     $ python3 -m pip install git+https://gitlab.diamond.ac.uk/kbp43231/dls-normsql.git
 
-The library should now be installed and the commandline should be available.
+The package should now be installed and the command line should be available.
 You can check the version that has been installed by typing::
 
     $ dls-normsql --version
     $ dls-normsql --version-json
 
-.. # dae_devops_fingerprint a2fe8dfbc79c151a5b899b244a529aa6
+.. # dae_devops_fingerprint d972d49fe32bcad19880f2817fed8fae

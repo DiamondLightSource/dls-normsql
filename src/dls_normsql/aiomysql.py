@@ -76,9 +76,6 @@ class Aiomysql:
 
         self.__backup_restore_lock = asyncio.Lock()
 
-        # TODO: Remove cursor lock when adding connection pooling.
-        self.__cursor_lock = asyncio.Lock()
-
         # Last undo position.
         self.__last_restore = 0
 
@@ -299,42 +296,41 @@ class Aiomysql:
             warnings.simplefilter("ignore")
             await self.execute("DROP TABLE IF EXISTS %s" % (table.name))
 
-        async with self.__cursor_lock:
-            async with self.__connection.cursor() as cursor:
+        async with self.__connection.cursor() as cursor:
 
-                fields_sql = []
-                indices_sql = []
+            fields_sql = []
+            indices_sql = []
 
-                for field_name in table.fields:
-                    field = table.fields[field_name]
-                    field_type = field["type"].upper()
-                    if field_type == "TEXT PRIMARY KEY":
-                        field_type = "VARCHAR(64) PRIMARY KEY"
-                    fields_sql.append("`%s` %s" % (field_name, field_type))
-                    if field.get("index", False):
-                        if field_type == "TEXT":
-                            index_length = "(128)"
-                        else:
-                            index_length = ""
-                        indices_sql.append(
-                            "CREATE INDEX `%s_%s` ON `%s`(`%s`%s)"
-                            % (
-                                table.name,
-                                field_name,
-                                table.name,
-                                field_name,
-                                index_length,
-                            )
+            for field_name in table.fields:
+                field = table.fields[field_name]
+                field_type = field["type"].upper()
+                if field_type == "TEXT PRIMARY KEY":
+                    field_type = "VARCHAR(64) PRIMARY KEY"
+                fields_sql.append("`%s` %s" % (field_name, field_type))
+                if field.get("index", False):
+                    if field_type == "TEXT":
+                        index_length = "(128)"
+                    else:
+                        index_length = ""
+                    indices_sql.append(
+                        "CREATE INDEX `%s_%s` ON `%s`(`%s`%s)"
+                        % (
+                            table.name,
+                            field_name,
+                            table.name,
+                            field_name,
+                            index_length,
                         )
+                    )
 
-                sql = "CREATE TABLE `%s`\n(%s)" % (table.name, ",\n  ".join(fields_sql))
+            sql = "CREATE TABLE `%s`\n(%s)" % (table.name, ",\n  ".join(fields_sql))
 
-                logger.debug("\n%s\n%s" % (sql, "\n".join(indices_sql)))
+            logger.debug("\n%s\n%s" % (sql, "\n".join(indices_sql)))
 
+            await cursor.execute(sql)
+
+            for sql in indices_sql:
                 await cursor.execute(sql)
-
-                for sql in indices_sql:
-                    await cursor.execute(sql)
 
     # ----------------------------------------------------------------------------------------
     async def insert(
@@ -398,10 +394,9 @@ class Aiomysql:
             message = "%s:\n%s\n%s" % (why, sql, values_rows)
 
         try:
-            async with self.__cursor_lock:
-                async with self.__connection.cursor() as cursor:
-                    await cursor.executemany(sql, values_rows)
-                    logger.debug(message)
+            async with self.__connection.cursor() as cursor:
+                await cursor.executemany(sql, values_rows)
+                logger.debug(message)
 
         except (TypeError, aiomysql.OperationalError) as exception:
             raise RuntimeError(f"{exception} doing {message}")
@@ -448,27 +443,26 @@ class Aiomysql:
 
         sql = self.__parameterize(sql, subs)
 
-        async with self.__cursor_lock:
-            async with self.__connection.cursor() as cursor:
-                try:
-                    await cursor.execute(sql, values_row)
-                    rowcount = cursor.rowcount
+        async with self.__connection.cursor() as cursor:
+            try:
+                await cursor.execute(sql, values_row)
+                rowcount = cursor.rowcount
 
-                    if why is None:
-                        logger.debug(
-                            "%d rows from:\n%s\nvalues %s" % (rowcount, sql, values_row)
-                        )
-                    else:
-                        logger.debug(
-                            "%d rows from %s:\n%s\nvalues %s"
-                            % (rowcount, why, sql, values_row)
-                        )
+                if why is None:
+                    logger.debug(
+                        "%d rows from:\n%s\nvalues %s" % (rowcount, sql, values_row)
+                    )
+                else:
+                    logger.debug(
+                        "%d rows from %s:\n%s\nvalues %s"
+                        % (rowcount, why, sql, values_row)
+                    )
 
-                except (TypeError, aiomysql.OperationalError):
-                    if why is None:
-                        raise RuntimeError(f"failed to execute {sql}")
-                    else:
-                        raise RuntimeError(f"failed to execute {why}: {sql}")
+            except (TypeError, aiomysql.OperationalError):
+                if why is None:
+                    raise RuntimeError(f"failed to execute {sql}")
+                else:
+                    raise RuntimeError(f"failed to execute {why}: {sql}")
 
         return rowcount
 
@@ -484,41 +478,40 @@ class Aiomysql:
         If subs is a list of lists, then these are presumed the values for executemany.
         """
 
-        async with self.__cursor_lock:
-            async with self.__connection.cursor() as cursor:
-                try:
-                    sql = self.__parameterize(sql, subs)
+        async with self.__connection.cursor() as cursor:
+            try:
+                sql = self.__parameterize(sql, subs)
 
-                    # Subs is a list of lists?
-                    if (
-                        isinstance(subs, list)
-                        and len(subs) > 0
-                        and isinstance(subs[0], list)
-                    ):
-                        logger.debug(f"inserting {len(subs)} of {len(subs[0])}")
-                        await cursor.executemany(sql, subs)
-                    else:
-                        await cursor.execute(sql, subs)
+                # Subs is a list of lists?
+                if (
+                    isinstance(subs, list)
+                    and len(subs) > 0
+                    and isinstance(subs[0], list)
+                ):
+                    logger.debug(f"inserting {len(subs)} of {len(subs[0])}")
+                    await cursor.executemany(sql, subs)
+                else:
+                    await cursor.execute(sql, subs)
 
-                    if why is None:
-                        if cursor.rowcount > 0:
-                            logger.debug(
-                                f"{cursor.rowcount} records affected by\n{sql}\nvalues {subs}"
-                            )
-                        else:
-                            logger.debug(f"{sql}\nvalues {subs}")
+                if why is None:
+                    if cursor.rowcount > 0:
+                        logger.debug(
+                            f"{cursor.rowcount} records affected by\n{sql}\nvalues {subs}"
+                        )
                     else:
-                        if cursor.rowcount > 0:
-                            logger.debug(
-                                f"{cursor.rowcount} records affected by {why}:\n{sql} values {subs}"
-                            )
-                        else:
-                            logger.debug(f"{why}: {sql}\nvalues {subs}")
-                except (TypeError, aiomysql.OperationalError):
-                    if why is None:
-                        raise RuntimeError(f"failed to execute {sql}")
+                        logger.debug(f"{sql}\nvalues {subs}")
+                else:
+                    if cursor.rowcount > 0:
+                        logger.debug(
+                            f"{cursor.rowcount} records affected by {why}:\n{sql} values {subs}"
+                        )
                     else:
-                        raise RuntimeError(f"failed to execute {why}: {sql}")
+                        logger.debug(f"{why}: {sql}\nvalues {subs}")
+            except (TypeError, aiomysql.OperationalError):
+                if why is None:
+                    raise RuntimeError(f"failed to execute {sql}")
+                else:
+                    raise RuntimeError(f"failed to execute {why}: {sql}")
 
     # ----------------------------------------------------------------------------------------
     async def query(self, sql, subs=None, why=None):
@@ -528,34 +521,31 @@ class Aiomysql:
 
         sql = self.__parameterize(sql, subs)
 
-        async with self.__cursor_lock:
-            async with self.__connection.cursor() as cursor:
-                try:
-                    cursor = await self.__connection.cursor()
-                    await cursor.execute(sql, subs)
-                    rows = await cursor.fetchall()
-                    cols = []
-                    for col in cursor.description:
-                        cols.append(col[0])
+        async with self.__connection.cursor() as cursor:
+            try:
+                cursor = await self.__connection.cursor()
+                await cursor.execute(sql, subs)
+                rows = await cursor.fetchall()
+                cols = []
+                for col in cursor.description:
+                    cols.append(col[0])
 
-                    if why is None:
-                        logger.debug("%d records from: %s" % (len(rows), sql))
-                    else:
-                        logger.debug("%d records from %s: %s" % (len(rows), why, sql))
-                    records = []
-                    for row in rows:
-                        record = OrderedDict()
-                        for index, col in enumerate(cols):
-                            record[col] = row[index]
-                        records.append(record)
-                    return records
-                except (TypeError, aiomysql.OperationalError) as exception:
-                    if why is None:
-                        raise RuntimeError(explain(exception, f"executing {sql}"))
-                    else:
-                        raise RuntimeError(
-                            explain(exception, f"executing {why}: {sql}")
-                        )
+                if why is None:
+                    logger.debug("%d records from: %s" % (len(rows), sql))
+                else:
+                    logger.debug("%d records from %s: %s" % (len(rows), why, sql))
+                records = []
+                for row in rows:
+                    record = OrderedDict()
+                    for index, col in enumerate(cols):
+                        record[col] = row[index]
+                    records.append(record)
+                return records
+            except (TypeError, aiomysql.OperationalError) as exception:
+                if why is None:
+                    raise RuntimeError(explain(exception, f"executing {sql}"))
+                else:
+                    raise RuntimeError(explain(exception, f"executing {why}: {sql}"))
 
     # ----------------------------------------------------------------------------------------
     async def backup(self):
