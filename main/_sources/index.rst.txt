@@ -1,9 +1,12 @@
+dls-normsql
+=======================================================================
 
-.. include:: ../README.rst
-    :end-before: when included in index.rst
+Normalized API over various sql libraries for consistency across multiple projects.
 
 .. toctree::
-    :caption: API-caption
-    :hidden:
+    :titlesonly:
 
-    api/index
+    tutorials/index
+    how-to/index
+    explanations/index
+    reference/index
