@@ -13,7 +13,7 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3.10",
 ]
-description = "Normalized API over various sql libraries."
+description = "Normalized API over various sql libraries for consistency across multiple projects."
 dependencies = ["dls-utilpack", "aiosqlite", "aiomysql", "cryptography"]
 dynamic = ["version"]
 license.file = "LICENSE"
@@ -100,4 +100,4 @@ source = ["src", "**/site-packages/"]
 [tool.tox]
 legacy_tox_ini = "[tox]\nskipsdist=True\n\n[testenv:{pre-commit,mypy,pytest,docs}]\n# Don't create a virtualenv for the command, requires tox-direct plugin\ndirect = True\npassenv = *\nallowlist_externals = \n    pytest \n    pre-commit\n    mypy\n    sphinx-build\n    sphinx-autobuild\ncommands =\n    pytest: pytest {posargs}\n    mypy: mypy src tests {posargs}\n    pre-commit: pre-commit run --all-files {posargs}\n    docs: sphinx-{posargs:build -EW --keep-going} -T docs build/html\n"
 
-# dae_devops_fingerprint df8767613c8b867ee1ddb91dd8b71fca
+# dae_devops_fingerprint aec34b4646849a704b0974693e0148cc
