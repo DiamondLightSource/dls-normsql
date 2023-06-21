@@ -215,9 +215,15 @@ class Aiomysql:
 
         if self.__connection is not None:
             # Commit final transaction if not currently autocommitting.
-            if not self.__connection.get_autocommit():
-                logger.debug(f"[DISSHU] {callsign(self)} committing final transaction")
+            try:
                 await self.__connection.commit()
+                logger.debug(
+                    f"[DISSHU] {callsign(self)} successfully committed final transaction"
+                )
+            except Exception as exception:
+                logger.warning(
+                    callsign(self, explain(exception, "committing final transaction"))
+                )
             logger.debug(f"[DISSHU] {callsign(self)} closing connection to server")
             self.__connection.close()
             self.__connection = None
